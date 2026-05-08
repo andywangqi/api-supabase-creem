@@ -37,6 +37,8 @@ export const config = {
   appBaseUrl: process.env.APP_BASE_URL || 'http://localhost:3000',
   timezoneOffsetMinutes: Number(process.env.APP_TIMEZONE_OFFSET_MINUTES || 480),
   defaultCurrency: process.env.DEFAULT_CURRENCY || 'USD',
+  anonCookieName: process.env.APP_ANON_COOKIE_NAME || 'anon_user_id',
+  cookieDomain: process.env.APP_COOKIE_DOMAIN || '',
   adminApiKey: process.env.ADMIN_API_KEY || '',
   supabaseUrl: (process.env.SUPABASE_URL || '').replace(/\/$/, ''),
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',

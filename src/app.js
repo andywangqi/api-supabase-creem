@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { requireAdmin } from './auth.js';
 import { createCreemCheckout, handleCreemWebhook } from './creem.js';
 import { getAdminMetrics } from './metrics.js';
+import { getOrCreateSiteSession } from './site.js';
 import { AppError, upsertUser } from './supabase.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -28,8 +29,9 @@ function corsHeaders(request) {
   return {
     'access-control-allow-origin': origin,
     vary: 'origin',
+    'access-control-allow-credentials': 'true',
     'access-control-allow-methods': 'GET,POST,OPTIONS',
-    'access-control-allow-headers': 'content-type,authorization,x-admin-key'
+    'access-control-allow-headers': 'content-type,authorization,x-admin-key,x-anonymous-id'
   };
 }
 
@@ -43,12 +45,13 @@ function response(request, body, init = {}) {
   });
 }
 
-function jsonResponse(request, status, payload) {
+function jsonResponse(request, status, payload, headers = {}) {
   return response(request, JSON.stringify(payload), {
     status,
     headers: {
       'content-type': 'application/json; charset=utf-8',
-      'cache-control': 'no-store'
+      'cache-control': 'no-store',
+      ...headers
     }
   });
 }
@@ -137,6 +140,12 @@ async function route(request) {
       service: 'api-supabase-creem',
       time: new Date().toISOString()
     });
+  }
+
+  if ((request.method === 'GET' || request.method === 'POST') && url.pathname === '/api/site/session') {
+    const body = request.method === 'POST' ? await readJson(request) : {};
+    const session = await getOrCreateSiteSession(request, body);
+    return jsonResponse(request, 200, session.body, session.headers);
   }
 
   if (request.method === 'GET' && url.pathname === '/api/admin/metrics') {

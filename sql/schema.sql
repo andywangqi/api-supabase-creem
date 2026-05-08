@@ -3,13 +3,22 @@ create extension if not exists pgcrypto;
 create table if not exists public.app_users (
   id uuid primary key default gen_random_uuid(),
   external_id text unique,
-  email text not null unique,
+  anonymous_id text unique,
+  email text unique,
   name text,
+  is_anonymous boolean not null default false,
   creem_customer_id text,
   metadata jsonb not null default '{}'::jsonb,
+  last_seen_at timestamptz not null default now(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.app_users add column if not exists external_id text unique;
+alter table public.app_users add column if not exists anonymous_id text unique;
+alter table public.app_users add column if not exists is_anonymous boolean not null default false;
+alter table public.app_users add column if not exists last_seen_at timestamptz not null default now();
+alter table public.app_users alter column email drop not null;
 
 create table if not exists public.payments (
   id uuid primary key default gen_random_uuid(),
@@ -35,6 +44,8 @@ create table if not exists public.payments (
 );
 
 create index if not exists app_users_created_at_idx on public.app_users (created_at);
+create index if not exists app_users_anonymous_id_idx on public.app_users (anonymous_id);
+create index if not exists app_users_last_seen_at_idx on public.app_users (last_seen_at);
 create index if not exists payments_paid_at_idx on public.payments (paid_at);
 create index if not exists payments_created_at_idx on public.payments (created_at);
 create index if not exists payments_status_idx on public.payments (status);

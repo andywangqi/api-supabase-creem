@@ -1,6 +1,13 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { config, creemBaseUrl, missing } from './config.js';
-import { AppError, insertPayment, upsertUser } from './supabase.js';
+import {
+  AppError,
+  findUserByAnonymousId,
+  findUserByEmail,
+  insertPayment,
+  updateUserById,
+  upsertUser
+} from './supabase.js';
 
 const PAID_EVENTS = new Set([
   'checkout.completed',
@@ -181,7 +188,7 @@ export function mapCreemEvent(rawEvent) {
       metadata: { source: 'creem_webhook' }
     } : null,
     payment: {
-      user_id: userId || null,
+      user_id: null,
       email: customerEmail || null,
       creem_event_id: eventId,
       creem_checkout_id: pickString(object.checkout_id, order.checkout_id, stringOrId(object.checkout)),
@@ -215,12 +222,33 @@ export async function createCreemCheckout(input = {}) {
 
   let user = null;
   if (input.email) {
-    user = await upsertUser({
-      id: input.userId,
-      email: input.email,
-      name: input.name,
-      metadata: { source: 'checkout' }
-    });
+    const email = String(input.email).toLowerCase();
+    const anonymousId = input.anonymousId || input.anonymous_id || '';
+    const existingEmailUser = await findUserByEmail(email);
+    const existingAnonymousUser = !existingEmailUser && anonymousId
+      ? await findUserByAnonymousId(anonymousId)
+      : null;
+
+    if (existingEmailUser || existingAnonymousUser) {
+      user = await updateUserById((existingEmailUser || existingAnonymousUser).id, {
+        ...(input.userId ? { external_id: input.userId } : {}),
+        email,
+        ...(input.name ? { name: input.name } : {}),
+        is_anonymous: false,
+        metadata: {
+          ...((existingEmailUser || existingAnonymousUser).metadata || {}),
+          source: 'checkout'
+        }
+      });
+    } else {
+      user = await upsertUser({
+        id: input.userId,
+        anonymousId,
+        email,
+        name: input.name,
+        metadata: { source: 'checkout' }
+      });
+    }
   }
 
   const requestId = input.requestId || input.request_id || input.userId || user?.id || randomUUID();

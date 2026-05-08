@@ -36,6 +36,7 @@ Vercel 路由：
 
 - `/admin` -> 后台页面
 - `/api/*` -> `api/[...path].js`
+- `/api/site/session` -> 前端网站初始化/匿名登录接口
 - `/payment-success` -> 支付成功页
 
 ## API
@@ -56,6 +57,54 @@ Content-Type: application/json
   "email": "user@example.com",
   "name": "User Name"
 }
+```
+
+### 前端网站初始化/匿名登录
+
+网站打开时调用：
+
+```http
+POST /api/site/session
+Content-Type: application/json
+```
+
+没有用户 Cookie 时会创建匿名用户，返回用户并写入 `anon_user_id` Cookie。
+
+```json
+{
+  "user": {
+    "id": "uuid",
+    "anonymousId": "uuid",
+    "email": null,
+    "isAnonymous": true
+  },
+  "anonymousId": "uuid",
+  "isNewUser": true,
+  "mode": "anonymous"
+}
+```
+
+如果前端已有登录邮箱，可以同一个接口转正式用户：
+
+```http
+POST /api/site/session
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "name": "User Name"
+}
+```
+
+前端示例：
+
+```js
+await fetch('/api/site/session', {
+  method: 'POST',
+  credentials: 'include',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({})
+});
 ```
 
 ### 管理统计
