@@ -39,6 +39,8 @@ Vercel 路由：
 - `/api/site/session` -> 前端网站初始化/匿名登录接口
 - `/api/blogs` -> 公开 Blog 列表接口
 - `/api/admin/blogs` -> 后台 Blog 上传接口
+- `/api/site/credits` -> 前端查询当前用户积分
+- `/api/admin/users` -> 后台用户列表和积分管理
 - `/payment-success` -> 支付成功页
 
 ## API
@@ -114,6 +116,79 @@ await fetch('/api/site/session', {
 ```http
 GET /api/admin/metrics?days=30
 Authorization: Bearer <ADMIN_API_KEY>
+```
+
+### 后台用户列表
+
+```http
+GET /api/admin/users?limit=50&search=user@example.com
+Authorization: Bearer <ADMIN_API_KEY>
+```
+
+返回用户注册时间和剩余积分：
+
+```json
+{
+  "users": [
+    {
+      "userId": "uuid",
+      "email": "user@example.com",
+      "anonymousId": "anon-id",
+      "creditsBalance": 100,
+      "createdAt": "2026-05-10T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+### 增加/扣减积分
+
+```http
+POST /api/admin/users/:id/credits/add
+Authorization: Bearer <ADMIN_API_KEY>
+Content-Type: application/json
+
+{
+  "amount": 100,
+  "reason": "manual top up"
+}
+```
+
+```http
+POST /api/admin/users/:id/credits/deduct
+Authorization: Bearer <ADMIN_API_KEY>
+Content-Type: application/json
+
+{
+  "amount": 10,
+  "reason": "manual deduction"
+}
+```
+
+查询单个用户积分：
+
+```http
+GET /api/admin/users/:id/credits
+Authorization: Bearer <ADMIN_API_KEY>
+```
+
+前端查询当前用户积分：
+
+```http
+GET /api/site/credits
+Cookie: anon_user_id=<id>
+```
+
+前端扣减当前用户积分：
+
+```http
+POST /api/site/credits/deduct
+Content-Type: application/json
+
+{
+  "amount": 1,
+  "reason": "feature usage"
+}
 ```
 
 ### 后台上传 Blog

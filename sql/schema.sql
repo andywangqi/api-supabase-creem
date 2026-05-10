@@ -7,6 +7,7 @@ create table if not exists public.app_users (
   email text unique,
   name text,
   is_anonymous boolean not null default false,
+  credits_balance integer not null default 0,
   creem_customer_id text,
   metadata jsonb not null default '{}'::jsonb,
   last_seen_at timestamptz not null default now(),
@@ -17,8 +18,21 @@ create table if not exists public.app_users (
 alter table public.app_users add column if not exists external_id text unique;
 alter table public.app_users add column if not exists anonymous_id text unique;
 alter table public.app_users add column if not exists is_anonymous boolean not null default false;
+alter table public.app_users add column if not exists credits_balance integer not null default 0;
 alter table public.app_users add column if not exists last_seen_at timestamptz not null default now();
 alter table public.app_users alter column email drop not null;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'app_users_credits_balance_nonnegative'
+  ) then
+    alter table public.app_users
+      add constraint app_users_credits_balance_nonnegative check (credits_balance >= 0);
+  end if;
+end;
+$$;
 
 create table if not exists public.payments (
   id uuid primary key default gen_random_uuid(),
@@ -58,9 +72,23 @@ create table if not exists public.blog_posts (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.credit_transactions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.app_users(id) on delete cascade,
+  delta integer not null check (delta <> 0),
+  balance_after integer not null,
+  source text not null default 'manual',
+  reason text,
+  idempotency_key text unique,
+  metadata jsonb not null default '{}'::jsonb,
+  created_by text,
+  created_at timestamptz not null default now()
+);
+
 create index if not exists app_users_created_at_idx on public.app_users (created_at);
 create index if not exists app_users_anonymous_id_idx on public.app_users (anonymous_id);
 create index if not exists app_users_last_seen_at_idx on public.app_users (last_seen_at);
+create index if not exists app_users_credits_balance_idx on public.app_users (credits_balance);
 create index if not exists payments_paid_at_idx on public.payments (paid_at);
 create index if not exists payments_created_at_idx on public.payments (created_at);
 create index if not exists payments_status_idx on public.payments (status);
@@ -68,6 +96,8 @@ create index if not exists payments_currency_idx on public.payments (currency);
 create index if not exists payments_creem_transaction_id_idx on public.payments (creem_transaction_id);
 create index if not exists blog_posts_status_published_at_idx on public.blog_posts (status, published_at desc);
 create index if not exists blog_posts_created_at_idx on public.blog_posts (created_at desc);
+create index if not exists credit_transactions_user_created_at_idx on public.credit_transactions (user_id, created_at desc);
+create index if not exists credit_transactions_created_at_idx on public.credit_transactions (created_at desc);
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -97,6 +127,98 @@ for each row execute function public.set_updated_at();
 alter table public.app_users enable row level security;
 alter table public.payments enable row level security;
 alter table public.blog_posts enable row level security;
+alter table public.credit_transactions enable row level security;
+
+create or replace function public.adjust_user_credits(
+  p_user_id uuid,
+  p_delta integer,
+  p_source text default 'manual',
+  p_reason text default null,
+  p_metadata jsonb default '{}'::jsonb,
+  p_created_by text default null,
+  p_idempotency_key text default null,
+  p_allow_negative boolean default false
+)
+returns table (
+  user_id uuid,
+  credits_balance integer,
+  transaction_id uuid
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_current_balance integer;
+  v_new_balance integer;
+  v_transaction_id uuid;
+begin
+  if p_delta is null or p_delta = 0 then
+    raise exception 'Credit delta must not be zero';
+  end if;
+
+  if p_idempotency_key is not null then
+    select ct.id, ct.balance_after
+      into v_transaction_id, v_new_balance
+    from public.credit_transactions ct
+    where ct.idempotency_key = p_idempotency_key;
+
+    if found then
+      user_id := p_user_id;
+      credits_balance := v_new_balance;
+      transaction_id := v_transaction_id;
+      return next;
+      return;
+    end if;
+  end if;
+
+  select app_users.credits_balance
+    into v_current_balance
+  from public.app_users
+  where app_users.id = p_user_id
+  for update;
+
+  if not found then
+    raise exception 'User not found';
+  end if;
+
+  v_new_balance := v_current_balance + p_delta;
+  if v_new_balance < 0 and not p_allow_negative then
+    raise exception 'Insufficient credits';
+  end if;
+
+  update public.app_users
+    set credits_balance = v_new_balance
+  where app_users.id = p_user_id;
+
+  insert into public.credit_transactions (
+    user_id,
+    delta,
+    balance_after,
+    source,
+    reason,
+    idempotency_key,
+    metadata,
+    created_by
+  )
+  values (
+    p_user_id,
+    p_delta,
+    v_new_balance,
+    coalesce(nullif(p_source, ''), 'manual'),
+    p_reason,
+    p_idempotency_key,
+    coalesce(p_metadata, '{}'::jsonb),
+    p_created_by
+  )
+  returning id into v_transaction_id;
+
+  user_id := p_user_id;
+  credits_balance := v_new_balance;
+  transaction_id := v_transaction_id;
+  return next;
+end;
+$$;
 
 create or replace function public.get_admin_metrics(
   p_day_start timestamptz,

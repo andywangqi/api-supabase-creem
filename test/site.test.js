@@ -45,6 +45,7 @@ test('maps public user shape', () => {
     email: null,
     name: null,
     isAnonymous: true,
+    creditsBalance: 0,
     createdAt: '2026-05-08T00:00:00Z',
     lastSeenAt: '2026-05-08T01:00:00Z'
   });

@@ -11,6 +11,13 @@ import {
   updateBlogPost
 } from './blog.js';
 import { createCreemCheckout, handleCreemWebhook } from './creem.js';
+import {
+  adjustUserCredits,
+  deductCurrentSiteUserCredits,
+  getCurrentSiteUserCredits,
+  getUserCredits,
+  listAdminUsers
+} from './credits.js';
 import { getAdminMetrics } from './metrics.js';
 import { getOrCreateSiteSession } from './site.js';
 import { AppError, upsertUser } from './supabase.js';
@@ -156,10 +163,63 @@ async function route(request) {
     return jsonResponse(request, 200, session.body, session.headers);
   }
 
+  if (request.method === 'GET' && url.pathname === '/api/site/credits') {
+    return jsonResponse(request, 200, {
+      user: await getCurrentSiteUserCredits(request)
+    });
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/site/credits/deduct') {
+    return jsonResponse(request, 200, {
+      user: await deductCurrentSiteUserCredits(request, await readJson(request))
+    });
+  }
+
   if (request.method === 'GET' && url.pathname === '/api/admin/metrics') {
     requireAdmin(request);
     const days = url.searchParams.get('days') || 30;
     return jsonResponse(request, 200, await getAdminMetrics(days));
+  }
+
+  if (request.method === 'GET' && url.pathname === '/api/admin/users') {
+    requireAdmin(request);
+    return jsonResponse(request, 200, {
+      users: await listAdminUsers({
+        limit: url.searchParams.get('limit'),
+        offset: url.searchParams.get('offset'),
+        search: url.searchParams.get('search')
+      })
+    });
+  }
+
+  const adminUserCreditsMatch = url.pathname.match(/^\/api\/admin\/users\/([^/]+)\/credits(?:\/(add|deduct))?$/);
+  if (adminUserCreditsMatch && request.method === 'GET') {
+    requireAdmin(request);
+    return jsonResponse(request, 200, {
+      user: await getUserCredits(adminUserCreditsMatch[1])
+    });
+  }
+
+  if (adminUserCreditsMatch && request.method === 'POST') {
+    requireAdmin(request);
+    const body = await readJson(request);
+    const action = adminUserCreditsMatch[2] || body.action || 'add';
+    if (action !== 'add' && action !== 'deduct') {
+      throw new AppError('Credit action must be add or deduct', 400);
+    }
+    return jsonResponse(request, 200, {
+      credits: await adjustUserCredits({
+        userId: adminUserCreditsMatch[1],
+        amount: body.amount,
+        action,
+        source: body.source || `admin_${action}`,
+        reason: body.reason,
+        metadata: body.metadata,
+        createdBy: 'admin',
+        idempotencyKey: body.idempotencyKey || body.idempotency_key,
+        allowNegative: body.allowNegative || body.allow_negative
+      })
+    });
   }
 
   if (request.method === 'GET' && url.pathname === '/api/admin/blogs') {

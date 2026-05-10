@@ -177,10 +177,26 @@ button.secondary:hover {
   margin-bottom: 18px;
 }
 
+.splitHead {
+  align-items: center;
+}
+
 .panelHead p {
   margin-top: 6px;
   color: var(--muted);
   font-size: 13px;
+}
+
+.inlineTools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.inlineTools input {
+  width: min(340px, 100%);
 }
 
 .pill {
@@ -304,6 +320,18 @@ th:nth-child(3) {
   justify-content: flex-start;
 }
 
+.creditTools {
+  display: grid;
+  grid-template-columns: 86px auto auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.creditTools input {
+  width: 86px;
+  height: 34px;
+}
+
 .rowHint {
   display: block;
   margin-top: 4px;
@@ -345,6 +373,15 @@ th:nth-child(3) {
   .blogForm {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .splitHead {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .inlineTools {
+    justify-content: flex-start;
+  }
 }
 
 @media (max-width: 560px) {
@@ -370,6 +407,20 @@ th:nth-child(3) {
 
   .formActions {
     flex-direction: column;
+  }
+
+  .inlineTools,
+  .inlineTools input,
+  .inlineTools button {
+    width: 100%;
+  }
+
+  .creditTools {
+    grid-template-columns: 1fr;
+  }
+
+  .creditTools input {
+    width: 100%;
   }
 
   .chart {

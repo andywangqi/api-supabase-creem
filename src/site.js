@@ -65,6 +65,7 @@ export function toPublicUser(user) {
     email: user.email || null,
     name: user.name || null,
     isAnonymous: Boolean(user.is_anonymous),
+    creditsBalance: Number(user.credits_balance || 0),
     createdAt: user.created_at,
     lastSeenAt: user.last_seen_at
   };

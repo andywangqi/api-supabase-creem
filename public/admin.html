@@ -74,6 +74,33 @@
       </section>
 
       <section class="panel">
+        <div class="panelHead splitHead">
+          <div>
+            <h2>Users</h2>
+            <p>Registration time and remaining credits.</p>
+          </div>
+          <form id="userSearchForm" class="inlineTools">
+            <input id="userSearch" type="search" placeholder="Search email, name, anonymous id">
+            <button type="submit" class="secondary">Search</button>
+            <button type="button" id="reloadUsers" class="secondary">Reload</button>
+          </form>
+        </div>
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Registered</th>
+                <th>Remaining credits</th>
+                <th>Adjust</th>
+              </tr>
+            </thead>
+            <tbody id="userRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
         <div class="panelHead">
           <div>
             <h2>Upload Blog</h2>

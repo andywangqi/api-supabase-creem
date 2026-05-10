@@ -8,6 +8,9 @@ const blogForm = document.querySelector('#blogForm');
 const blogRows = document.querySelector('#blogRows');
 const resetBlogButton = document.querySelector('#resetBlog');
 const reloadBlogsButton = document.querySelector('#reloadBlogs');
+const userRows = document.querySelector('#userRows');
+const userSearchForm = document.querySelector('#userSearchForm');
+const reloadUsersButton = document.querySelector('#reloadUsers');
 
 const nodes = {
   totalUsers: document.querySelector('#totalUsers'),
@@ -24,10 +27,12 @@ const nodes = {
   blogStatus: document.querySelector('#blogStatus'),
   blogCover: document.querySelector('#blogCover'),
   blogExcerpt: document.querySelector('#blogExcerpt'),
-  blogContent: document.querySelector('#blogContent')
+  blogContent: document.querySelector('#blogContent'),
+  userSearch: document.querySelector('#userSearch')
 };
 
 let blogs = [];
+let users = [];
 adminKeyInput.value = localStorage.getItem('adminApiKey') || '';
 
 function adminHeaders() {
@@ -65,6 +70,25 @@ function slugify(input) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 96);
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function shortId(value) {
+  if (!value) return '-';
+  const text = String(value);
+  return text.length > 12 ? `${text.slice(0, 8)}...` : text;
+}
+
+function dateTime(value) {
+  return value ? new Date(value).toLocaleString('en-US') : '-';
 }
 
 function renderChart(items, currency) {
@@ -130,14 +154,46 @@ function renderBlogs() {
     const published = blog.publishedAt ? new Date(blog.publishedAt).toLocaleDateString('en-US') : '-';
     tr.innerHTML = `
       <td>
-        <strong>${blog.title}</strong>
-        <span class="rowHint">/${blog.slug}</span>
+        <strong>${escapeHtml(blog.title)}</strong>
+        <span class="rowHint">/${escapeHtml(blog.slug)}</span>
       </td>
-      <td><span class="tag ${blog.status}">${blog.status}</span></td>
+      <td><span class="tag ${escapeHtml(blog.status)}">${escapeHtml(blog.status)}</span></td>
       <td>${published}</td>
       <td><button type="button" class="smallButton" data-edit="${blog.id}">Edit</button></td>
     `;
     blogRows.appendChild(tr);
+  }
+}
+
+function renderUsers() {
+  userRows.innerHTML = '';
+
+  if (!users.length) {
+    const empty = document.createElement('tr');
+    empty.innerHTML = '<td colspan="4">No users</td>';
+    userRows.appendChild(empty);
+    return;
+  }
+
+  for (const user of users) {
+    const label = user.email || user.name || user.anonymousId || user.userId;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <strong>${escapeHtml(label)}</strong>
+        <span class="rowHint">${user.isAnonymous ? 'Anonymous' : 'Registered'} · ${escapeHtml(shortId(user.userId))}</span>
+      </td>
+      <td>${dateTime(user.createdAt)}</td>
+      <td><strong>${number(user.creditsBalance)}</strong></td>
+      <td>
+        <div class="creditTools">
+          <input type="number" min="1" step="1" value="10" data-credit-amount="${user.userId}" aria-label="Credit amount">
+          <button type="button" class="smallButton" data-credit-action="add" data-user-id="${user.userId}">Add</button>
+          <button type="button" class="smallButton secondary" data-credit-action="deduct" data-user-id="${user.userId}">Deduct</button>
+        </div>
+      </td>
+    `;
+    userRows.appendChild(tr);
   }
 }
 
@@ -171,9 +227,21 @@ async function loadBlogs() {
   renderBlogs();
 }
 
+async function loadUsers() {
+  const search = nodes.userSearch.value.trim();
+  const response = await fetch(`/api/admin/users?limit=50&search=${encodeURIComponent(search)}`, {
+    headers: adminHeaders()
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload?.error?.message || 'Users load failed');
+
+  users = payload.users || [];
+  renderUsers();
+}
+
 async function refreshAll() {
   setStatus('Loading...');
-  await Promise.all([loadMetrics(), loadBlogs()]);
+  await Promise.all([loadMetrics(), loadBlogs(), loadUsers()]);
   setStatus('');
 }
 
@@ -202,6 +270,22 @@ async function saveBlog() {
   setStatus('Blog saved');
 }
 
+async function adjustCredits(userId, action, amount) {
+  const response = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/credits/${action}`, {
+    method: 'POST',
+    headers: adminHeaders(),
+    body: JSON.stringify({
+      amount,
+      reason: 'Admin adjustment'
+    })
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload?.error?.message || 'Credit adjustment failed');
+
+  await loadUsers();
+  setStatus(`Credits updated: ${number(payload.credits.creditsBalance)}`);
+}
+
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   try {
@@ -227,9 +311,32 @@ blogRows.addEventListener('click', (event) => {
   if (blog) fillBlogForm(blog);
 });
 
+userRows.addEventListener('click', async (event) => {
+  const button = event.target.closest('[data-credit-action]');
+  if (!button) return;
+
+  const userId = button.dataset.userId;
+  const action = button.dataset.creditAction;
+  const input = userRows.querySelector(`[data-credit-amount="${CSS.escape(userId)}"]`);
+  const amount = Number(input?.value || 0);
+
+  try {
+    await adjustCredits(userId, action, amount);
+  } catch (error) {
+    setStatus(error.message, true);
+  }
+});
+
 resetBlogButton.addEventListener('click', resetBlogForm);
 reloadBlogsButton.addEventListener('click', () => {
   loadBlogs().catch((error) => setStatus(error.message, true));
+});
+reloadUsersButton.addEventListener('click', () => {
+  loadUsers().catch((error) => setStatus(error.message, true));
+});
+userSearchForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  loadUsers().catch((error) => setStatus(error.message, true));
 });
 
 nodes.blogTitle.addEventListener('input', () => {
