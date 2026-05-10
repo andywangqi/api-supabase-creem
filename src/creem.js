@@ -1,4 +1,5 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
+import { applyPaymentBenefits, applySubscriptionStatus } from './billing.js';
 import { config, creemBaseUrl, missing } from './config.js';
 import {
   AppError,
@@ -20,6 +21,14 @@ const REFUND_EVENTS = new Set([
   'refund.created',
   'refund.succeeded',
   'order.refunded'
+]);
+
+const STATUS_EVENTS = new Set([
+  'subscription.canceled',
+  'subscription.expired',
+  'subscription.paused',
+  'payment.failed',
+  'subscription.payment_failed'
 ]);
 
 function getHeader(headers, name) {
@@ -135,11 +144,21 @@ export function mapCreemEvent(rawEvent) {
   const isPaid = PAID_EVENTS.has(type);
 
   if (!isPaid && !isRefund) {
-    return { ignored: true, eventType: type || 'unknown' };
+    return {
+      ignored: true,
+      eventType: type || 'unknown',
+      statusEvent: STATUS_EVENTS.has(type),
+      metadata
+    };
   }
 
   if (type === 'checkout.completed' && object.subscription) {
-    return { ignored: true, eventType: type, reason: 'subscription revenue is tracked by subscription.paid' };
+    return {
+      ignored: true,
+      eventType: type,
+      reason: 'subscription revenue is tracked by subscription.paid',
+      metadata
+    };
   }
 
   const eventId = pickString(event.id, event.event_id, object.event_id, order.event_id);
@@ -180,9 +199,11 @@ export function mapCreemEvent(rawEvent) {
 
   return {
     ignored: false,
+    eventType: type,
+    metadata,
     user: customerEmail ? {
-      id: userId || undefined,
       email: customerEmail,
+      anonymousId: pickString(metadata.anonymousId, metadata.anonymous_id),
       name: pickString(customer.name, metadata.name),
       creemCustomerId: stringOrId(object.customer || order.customer),
       metadata: { source: 'creem_webhook' }
@@ -193,7 +214,7 @@ export function mapCreemEvent(rawEvent) {
       creem_event_id: eventId,
       creem_checkout_id: pickString(object.checkout_id, order.checkout_id, stringOrId(object.checkout)),
       creem_order_id: pickString(object.order_id, stringOrId(object.order), order.id),
-      creem_subscription_id: pickString(object.subscription_id, subscription.id, stringOrId(object.subscription)),
+      creem_subscription_id: pickString(object.subscription_id, subscription.id, stringOrId(object.subscription), type.startsWith('subscription.') ? object.id : ''),
       creem_transaction_id: pickString(object.last_transaction_id, order.transaction_id, object.transaction_id),
       creem_customer_id: pickString(stringOrId(object.customer), stringOrId(order.customer), customer.id),
       request_id: pickString(object.request_id, order.request_id, metadata.requestId, metadata.request_id),
@@ -305,6 +326,9 @@ export async function handleCreemWebhook(rawBody, headers) {
   const event = JSON.parse(rawBody.toString('utf8'));
   const mapped = mapCreemEvent(event);
   if (mapped.ignored) {
+    if (mapped.statusEvent) {
+      await applySubscriptionStatus(event, mapped);
+    }
     return { ok: true, ignored: true, eventType: mapped.eventType };
   }
 
@@ -319,5 +343,6 @@ export async function handleCreemWebhook(rawBody, headers) {
   };
 
   const saved = await insertPayment(payment);
+  await applyPaymentBenefits({ payment: saved, mapped, rawEvent: event });
   return { ok: true, paymentId: saved?.id, eventType: payment.event_type };
 }

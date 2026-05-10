@@ -3,6 +3,13 @@ import { dirname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { requireAdmin } from './auth.js';
 import {
+  saveSupabaseAuthUser,
+  getCurrentActor
+} from './auth-supabase.js';
+import {
+  createSiteCheckout
+} from './billing.js';
+import {
   createBlogPost,
   deleteBlogPost,
   getPublishedBlogPost,
@@ -19,7 +26,11 @@ import {
   listAdminUsers
 } from './credits.js';
 import { getAdminMetrics } from './metrics.js';
+import { createTryOnGeneration } from './generations.js';
+import { createFaceReport, getFaceReportForUser, ensureReportOwnedByUser, reportAccess } from './reports.js';
 import { getOrCreateSiteSession } from './site.js';
+import { getActiveSubscription } from './subscriptions.js';
+import { detectAllowanceForUser } from './usage.js';
 import { AppError, upsertUser } from './supabase.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -163,6 +174,22 @@ async function route(request) {
     return jsonResponse(request, 200, session.body, session.headers);
   }
 
+  if (request.method === 'POST' && url.pathname === '/api/auth/supabase') {
+    const user = await saveSupabaseAuthUser(request, await readJson(request));
+    return jsonResponse(request, 200, {
+      user: {
+        id: user.id,
+        email: user.email || null,
+        name: user.name || null,
+        avatarUrl: user.avatar_url || null,
+        creditsBalance: Number(user.credits_balance || 0),
+        createdAt: user.created_at,
+        lastSeenAt: user.last_seen_at
+      },
+      subscription: await getActiveSubscription(user.id)
+    });
+  }
+
   if (request.method === 'GET' && url.pathname === '/api/site/credits') {
     return jsonResponse(request, 200, {
       user: await getCurrentSiteUserCredits(request)
@@ -172,6 +199,62 @@ async function route(request) {
   if (request.method === 'POST' && url.pathname === '/api/site/credits/deduct') {
     return jsonResponse(request, 200, {
       user: await deductCurrentSiteUserCredits(request, await readJson(request))
+    });
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/face/detect/allow') {
+    const actor = await getCurrentActor(request, { createAnonymous: true });
+    return jsonResponse(request, 200, await detectAllowanceForUser(actor.user), actor.headers);
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/face/reports') {
+    const actor = await getCurrentActor(request, { createAnonymous: true });
+    return jsonResponse(request, 201, {
+      report: await createFaceReport(actor.user, await readJson(request))
+    }, actor.headers);
+  }
+
+  const faceReportMatch = url.pathname.match(/^\/api\/face\/reports\/([^/]+)$/);
+  if (faceReportMatch && request.method === 'GET') {
+    const actor = await getCurrentActor(request, { createAnonymous: false });
+    return jsonResponse(request, 200, {
+      report: await getFaceReportForUser(actor.user, faceReportMatch[1])
+    }, actor.headers);
+  }
+
+  if (request.method === 'GET' && url.pathname === '/api/site/access') {
+    const actor = await getCurrentActor(request, { createAnonymous: true });
+    const reportId = url.searchParams.get('reportId');
+    const subscription = await getActiveSubscription(actor.user.id);
+    let report = null;
+    if (reportId) {
+      await ensureReportOwnedByUser(actor.user, reportId);
+      const access = await reportAccess(actor.user, reportId);
+      report = {
+        unlocked: access.unlocked,
+        source: access.source
+      };
+    }
+    return jsonResponse(request, 200, {
+      user: {
+        id: actor.user.id,
+        email: actor.user.email || null,
+        creditsBalance: Number(actor.user.credits_balance || 0)
+      },
+      subscription: subscription || { active: false },
+      ...(report ? { report } : {})
+    }, actor.headers);
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/site/checkout') {
+    const actor = await getCurrentActor(request, { createAnonymous: true });
+    return jsonResponse(request, 201, await createSiteCheckout(actor.user, await readJson(request)), actor.headers);
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/ai/try-on') {
+    const actor = await getCurrentActor(request, { requireAuth: true });
+    return jsonResponse(request, 201, {
+      generation: await createTryOnGeneration(actor.user, await readJson(request))
     });
   }
 

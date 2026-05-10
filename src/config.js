@@ -43,10 +43,19 @@ export const config = {
   supabaseUrl: (process.env.SUPABASE_URL || '').replace(/\/$/, ''),
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
   supabaseSchema: process.env.SUPABASE_SCHEMA || 'public',
+  supabaseJwtSecret: process.env.SUPABASE_JWT_SECRET || '',
   creemApiKey: process.env.CREEM_API_KEY || '',
   creemWebhookSecret: process.env.CREEM_WEBHOOK_SECRET || '',
   creemProductId: process.env.CREEM_PRODUCT_ID || '',
-  creemTestMode: boolEnv(process.env.CREEM_TEST_MODE, true)
+  creemTestMode: boolEnv(process.env.CREEM_TEST_MODE, true),
+  creemProducts: {
+    full_report: process.env.CREEM_PRODUCT_FULL_REPORT_ID || '',
+    credits_50: process.env.CREEM_PRODUCT_CREDITS_50_ID || '',
+    credits_120: process.env.CREEM_PRODUCT_CREDITS_120_ID || '',
+    credits_300: process.env.CREEM_PRODUCT_CREDITS_300_ID || '',
+    pro_monthly: process.env.CREEM_PRODUCT_PRO_MONTHLY_ID || '',
+    studio_monthly: process.env.CREEM_PRODUCT_STUDIO_MONTHLY_ID || ''
+  }
 };
 
 export function missing(keys) {
