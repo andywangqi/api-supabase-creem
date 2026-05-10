@@ -1,69 +1,158 @@
 # API + Supabase + Creem
 
-轻量 Node.js 后端，支持本地运行和 Vercel 部署，包含：
+用于 Vercel 部署的轻量 Node.js 后端，数据库使用 Supabase，支付使用 Creem。
+
+## 功能
 
 - 后台页面：`/admin`
-- 管理统计 API：总用户数、当天用户数、当天收入、总收入、每日收入
-- Supabase 数据表和 RPC：`sql/schema.sql`
-- Creem Checkout 创建接口
-- Creem Webhook 入账接口
+- 用户统计：总用户数、当天用户数
+- 收入统计：当天收入、总收入、每日收入
+- 前端网站初始化：自动创建匿名用户
+- 积分系统：查询积分、增加积分、扣减积分、积分流水
+- 后台用户列表：显示注册时间、剩余积分，并支持手动加减积分
+- Blog 管理：后台上传、编辑、列表；前台公开读取
+- Creem：创建 Checkout、接收 Webhook 入账
 
-## 本地启动
+## 项目结构
 
-1. 在 Supabase SQL Editor 执行 `sql/schema.sql`
-2. 复制 `.env.example` 为 `.env` 并填入密钥
-3. 启动服务：
+```text
+api/[...path].js          Vercel Function 入口
+public/admin.html         后台页面
+public/admin.js           后台交互逻辑
+src/app.js                API 路由
+src/site.js               匿名登录/用户初始化
+src/credits.js            积分业务
+src/blog.js               Blog 业务
+src/creem.js              Creem 支付与 Webhook
+src/supabase.js           Supabase REST/RPC 封装
+sql/schema.sql            Supabase 建表与 RPC
+```
+
+## 环境变量
+
+复制 `.env.example` 为 `.env`，本地运行或 Vercel 环境变量都使用同一套配置。
+
+```env
+PORT=3000
+APP_BASE_URL=http://localhost:3000
+APP_TIMEZONE_OFFSET_MINUTES=480
+DEFAULT_CURRENCY=USD
+APP_ANON_COOKIE_NAME=anon_user_id
+APP_COOKIE_DOMAIN=
+
+ADMIN_API_KEY=change-me-long-random-admin-key
+
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+SUPABASE_SCHEMA=public
+
+CREEM_API_KEY=your-creem-api-key
+CREEM_WEBHOOK_SECRET=your-creem-webhook-secret
+CREEM_PRODUCT_ID=your-creem-product-id
+CREEM_TEST_MODE=true
+```
+
+注意：
+
+- `SUPABASE_SERVICE_ROLE_KEY` 只能放服务端或 Vercel 环境变量，不能暴露到前端。
+- `ADMIN_API_KEY` 是后台访问密钥，进入 `/admin` 后输入。
+- `APP_TIMEZONE_OFFSET_MINUTES=480` 表示 UTC+8，用于当天用户和当天收入统计。
+- `CREEM_TEST_MODE=true` 使用 Creem 测试环境，上线后改为 `false`。
+
+## Supabase 初始化
+
+在 Supabase SQL Editor 执行：
+
+```text
+sql/schema.sql
+```
+
+会创建：
+
+- `app_users`：用户表，包含匿名用户、邮箱用户、积分余额
+- `payments`：支付入账表
+- `credit_transactions`：积分流水表
+- `blog_posts`：Blog 表
+- `get_admin_metrics`：后台统计 RPC
+- `get_daily_revenue`：每日收入 RPC
+- `adjust_user_credits`：积分加减 RPC
+
+如果已经执行过旧版本 SQL，也可以再次执行，脚本包含 `if not exists` 和增量字段补齐。
+
+## 本地运行
 
 ```bash
 node src/server.js
 ```
 
-打开：
+打开后台：
 
 ```text
 http://localhost:3000/admin
 ```
 
-后台页面里输入 `ADMIN_API_KEY`。
+运行测试：
+
+```bash
+node --test --test-isolation=none
+```
 
 ## Vercel 部署
 
-1. 把本仓库导入 Vercel
-2. 在 Vercel Project Settings -> Environment Variables 配置 `.env.example` 里的变量
-3. 部署后访问 `/admin`
+1. 推送代码到 GitHub。
+2. 在 Vercel 导入仓库。
+3. 在 Vercel Project Settings -> Environment Variables 添加 `.env.example` 中的变量。
+4. 部署后访问 `/admin`。
+5. 在 Creem 后台配置 Webhook：
+
+```text
+https://your-domain.com/api/creem/webhook
+```
 
 Vercel 路由：
 
-- `/admin` -> 后台页面
-- `/api/*` -> `api/[...path].js`
-- `/api/site/session` -> 前端网站初始化/匿名登录接口
-- `/api/blogs` -> 公开 Blog 列表接口
-- `/api/admin/blogs` -> 后台 Blog 上传接口
-- `/api/site/credits` -> 前端查询当前用户积分
-- `/api/admin/users` -> 后台用户列表和积分管理
-- `/payment-success` -> 支付成功页
+- `/admin`：后台页面
+- `/api/*`：API
+- `/api/site/session`：前端初始化/匿名登录
+- `/api/site/credits`：前端查询当前用户积分
+- `/api/admin/users`：后台用户列表和积分管理
+- `/api/admin/blogs`：后台 Blog 管理
+- `/api/blogs`：前台公开 Blog API
+- `/payment-success`：支付成功页
 
-## API
+## API 鉴权
 
-### 健康检查
+后台 API 需要传 `ADMIN_API_KEY`，二选一：
+
+```http
+Authorization: Bearer <ADMIN_API_KEY>
+```
+
+或：
+
+```http
+x-admin-key: <ADMIN_API_KEY>
+```
+
+前端用户 API 使用 `anon_user_id` Cookie。首次调用 `/api/site/session` 时会自动创建匿名用户并写入 Cookie。
+
+## 健康检查
 
 ```http
 GET /health
 ```
 
-### 创建/更新用户
+返回：
 
-```http
-POST /api/users
-Content-Type: application/json
-
+```json
 {
-  "email": "user@example.com",
-  "name": "User Name"
+  "ok": true,
+  "service": "api-supabase-creem",
+  "time": "2026-05-10T00:00:00.000Z"
 }
 ```
 
-### 前端网站初始化/匿名登录
+## 前端用户初始化
 
 网站打开时调用：
 
@@ -72,7 +161,20 @@ POST /api/site/session
 Content-Type: application/json
 ```
 
-没有用户 Cookie 时会创建匿名用户，返回用户并写入 `anon_user_id` Cookie。
+前端示例：
+
+```js
+const response = await fetch('/api/site/session', {
+  method: 'POST',
+  credentials: 'include',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({})
+});
+
+const data = await response.json();
+```
+
+首次访问会创建匿名用户：
 
 ```json
 {
@@ -80,7 +182,11 @@ Content-Type: application/json
     "id": "uuid",
     "anonymousId": "uuid",
     "email": null,
-    "isAnonymous": true
+    "name": null,
+    "isAnonymous": true,
+    "creditsBalance": 0,
+    "createdAt": "2026-05-10T00:00:00.000Z",
+    "lastSeenAt": "2026-05-10T00:00:00.000Z"
   },
   "anonymousId": "uuid",
   "isNewUser": true,
@@ -88,7 +194,7 @@ Content-Type: application/json
 }
 ```
 
-如果前端已有登录邮箱，可以同一个接口转正式用户：
+如果前端已有邮箱，可用同一个接口把匿名用户升级为正式用户：
 
 ```http
 POST /api/site/session
@@ -100,32 +206,53 @@ Content-Type: application/json
 }
 ```
 
-前端示例：
+## 积分 API
 
-```js
-await fetch('/api/site/session', {
-  method: 'POST',
-  credentials: 'include',
-  headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({})
-});
-```
-
-### 管理统计
+### 前端查询当前用户积分
 
 ```http
-GET /api/admin/metrics?days=30
-Authorization: Bearer <ADMIN_API_KEY>
+GET /api/site/credits
+Cookie: anon_user_id=<id>
 ```
+
+返回：
+
+```json
+{
+  "user": {
+    "userId": "uuid",
+    "email": null,
+    "anonymousId": "uuid",
+    "creditsBalance": 100,
+    "createdAt": "2026-05-10T00:00:00.000Z"
+  }
+}
+```
+
+### 前端扣减当前用户积分
+
+```http
+POST /api/site/credits/deduct
+Content-Type: application/json
+Cookie: anon_user_id=<id>
+
+{
+  "amount": 1,
+  "reason": "feature usage",
+  "idempotencyKey": "optional-unique-key"
+}
+```
+
+默认不允许扣成负数。
 
 ### 后台用户列表
 
 ```http
 GET /api/admin/users?limit=50&search=user@example.com
-Authorization: Bearer <ADMIN_API_KEY>
+x-admin-key: <ADMIN_API_KEY>
 ```
 
-返回用户注册时间和剩余积分：
+返回：
 
 ```json
 {
@@ -134,29 +261,42 @@ Authorization: Bearer <ADMIN_API_KEY>
       "userId": "uuid",
       "email": "user@example.com",
       "anonymousId": "anon-id",
+      "name": "User Name",
+      "isAnonymous": false,
       "creditsBalance": 100,
-      "createdAt": "2026-05-10T00:00:00.000Z"
+      "createdAt": "2026-05-10T00:00:00.000Z",
+      "lastSeenAt": "2026-05-10T01:00:00.000Z"
     }
   ]
 }
 ```
 
-### 增加/扣减积分
+### 后台查询单个用户积分
+
+```http
+GET /api/admin/users/:id/credits
+x-admin-key: <ADMIN_API_KEY>
+```
+
+### 后台增加积分
 
 ```http
 POST /api/admin/users/:id/credits/add
-Authorization: Bearer <ADMIN_API_KEY>
+x-admin-key: <ADMIN_API_KEY>
 Content-Type: application/json
 
 {
   "amount": 100,
-  "reason": "manual top up"
+  "reason": "manual top up",
+  "idempotencyKey": "optional-unique-key"
 }
 ```
 
+### 后台扣减积分
+
 ```http
 POST /api/admin/users/:id/credits/deduct
-Authorization: Bearer <ADMIN_API_KEY>
+x-admin-key: <ADMIN_API_KEY>
 Content-Type: application/json
 
 {
@@ -165,37 +305,36 @@ Content-Type: application/json
 }
 ```
 
-查询单个用户积分：
+返回：
 
-```http
-GET /api/admin/users/:id/credits
-Authorization: Bearer <ADMIN_API_KEY>
-```
-
-前端查询当前用户积分：
-
-```http
-GET /api/site/credits
-Cookie: anon_user_id=<id>
-```
-
-前端扣减当前用户积分：
-
-```http
-POST /api/site/credits/deduct
-Content-Type: application/json
-
+```json
 {
-  "amount": 1,
-  "reason": "feature usage"
+  "credits": {
+    "userId": "uuid",
+    "creditsBalance": 90,
+    "transactionId": "uuid"
+  }
 }
 ```
 
-### 后台上传 Blog
+## 后台统计 API
+
+```http
+GET /api/admin/metrics?days=30
+x-admin-key: <ADMIN_API_KEY>
+```
+
+返回总用户、当天用户、当天收入、总收入、每日收入。
+
+收入金额使用最小货币单位保存，例如 USD cents。前端展示时会除以 100。
+
+## Blog API
+
+### 后台创建或更新 Blog
 
 ```http
 POST /api/admin/blogs
-Authorization: Bearer <ADMIN_API_KEY>
+x-admin-key: <ADMIN_API_KEY>
 Content-Type: application/json
 
 {
@@ -209,7 +348,12 @@ Content-Type: application/json
 }
 ```
 
-管理端接口：
+`status` 可选：
+
+- `draft`
+- `published`
+
+后台其他接口：
 
 ```http
 GET /api/admin/blogs?limit=50
@@ -217,14 +361,18 @@ PATCH /api/admin/blogs/:id
 DELETE /api/admin/blogs/:id
 ```
 
-公开网站接口：
+### 前台公开读取 Blog
 
 ```http
 GET /api/blogs?limit=20&offset=0
 GET /api/blogs/:slug
 ```
 
-### 创建 Creem Checkout
+只返回 `published` 状态文章。
+
+## Creem 支付 API
+
+### 创建 Checkout
 
 ```http
 POST /api/creem/checkout
@@ -232,22 +380,45 @@ Content-Type: application/json
 
 {
   "email": "user@example.com",
-  "productId": "prod_xxx"
+  "name": "User Name",
+  "productId": "prod_xxx",
+  "anonymousId": "optional-anon-id"
 }
 ```
 
-返回里使用 `checkoutUrl` 跳转到支付页。
+返回：
+
+```json
+{
+  "checkoutId": "checkout_xxx",
+  "checkoutUrl": "https://...",
+  "requestId": "uuid"
+}
+```
+
+前端拿到 `checkoutUrl` 后跳转到支付页。
 
 ### Creem Webhook
 
-```text
+```http
 POST /api/creem/webhook
 ```
 
-在 Creem 后台配置 Webhook URL 为：
+Webhook 会校验签名，并把支付结果写入 `payments`。订阅场景下收入使用 `subscription.paid` 记账，避免和 `checkout.completed` 重复计算。
+
+## 手动 Git 推送
+
+当前项目目录：
 
 ```text
-https://your-domain.com/api/creem/webhook
+D:\work\web\api-supabase-creem
 ```
 
-收入统计按 `payments.amount` 的最小货币单位保存，例如 USD cents。
+推送到 GitHub：
+
+```powershell
+cd "D:\work\web\api-supabase-creem"
+git push -u origin main
+```
+
+如果提示权限不足，切换到有 `andywangqi/api-supabase-creem` 权限的 GitHub 账号后再推。
