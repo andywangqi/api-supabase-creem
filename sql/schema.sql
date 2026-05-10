@@ -43,6 +43,21 @@ create table if not exists public.payments (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.blog_posts (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  slug text not null unique,
+  excerpt text,
+  content text not null,
+  cover_image_url text,
+  author_name text,
+  status text not null default 'draft' check (status in ('draft', 'published')),
+  metadata jsonb not null default '{}'::jsonb,
+  published_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create index if not exists app_users_created_at_idx on public.app_users (created_at);
 create index if not exists app_users_anonymous_id_idx on public.app_users (anonymous_id);
 create index if not exists app_users_last_seen_at_idx on public.app_users (last_seen_at);
@@ -51,6 +66,8 @@ create index if not exists payments_created_at_idx on public.payments (created_a
 create index if not exists payments_status_idx on public.payments (status);
 create index if not exists payments_currency_idx on public.payments (currency);
 create index if not exists payments_creem_transaction_id_idx on public.payments (creem_transaction_id);
+create index if not exists blog_posts_status_published_at_idx on public.blog_posts (status, published_at desc);
+create index if not exists blog_posts_created_at_idx on public.blog_posts (created_at desc);
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -72,8 +89,14 @@ create trigger payments_set_updated_at
 before update on public.payments
 for each row execute function public.set_updated_at();
 
+drop trigger if exists blog_posts_set_updated_at on public.blog_posts;
+create trigger blog_posts_set_updated_at
+before update on public.blog_posts
+for each row execute function public.set_updated_at();
+
 alter table public.app_users enable row level security;
 alter table public.payments enable row level security;
+alter table public.blog_posts enable row level security;
 
 create or replace function public.get_admin_metrics(
   p_day_start timestamptz,

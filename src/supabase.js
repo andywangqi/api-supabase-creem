@@ -67,6 +67,10 @@ function rowOrFirst(rows) {
   return Array.isArray(rows) ? rows[0] || null : rows;
 }
 
+export function firstRow(rows) {
+  return rowOrFirst(rows);
+}
+
 export async function findUserByAnonymousId(anonymousId) {
   if (!anonymousId) return null;
 

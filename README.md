@@ -37,6 +37,8 @@ Vercel 路由：
 - `/admin` -> 后台页面
 - `/api/*` -> `api/[...path].js`
 - `/api/site/session` -> 前端网站初始化/匿名登录接口
+- `/api/blogs` -> 公开 Blog 列表接口
+- `/api/admin/blogs` -> 后台 Blog 上传接口
 - `/payment-success` -> 支付成功页
 
 ## API
@@ -112,6 +114,39 @@ await fetch('/api/site/session', {
 ```http
 GET /api/admin/metrics?days=30
 Authorization: Bearer <ADMIN_API_KEY>
+```
+
+### 后台上传 Blog
+
+```http
+POST /api/admin/blogs
+Authorization: Bearer <ADMIN_API_KEY>
+Content-Type: application/json
+
+{
+  "title": "First post",
+  "slug": "first-post",
+  "excerpt": "Short summary",
+  "content": "Full blog content",
+  "coverImageUrl": "https://example.com/cover.jpg",
+  "authorName": "Admin",
+  "status": "published"
+}
+```
+
+管理端接口：
+
+```http
+GET /api/admin/blogs?limit=50
+PATCH /api/admin/blogs/:id
+DELETE /api/admin/blogs/:id
+```
+
+公开网站接口：
+
+```http
+GET /api/blogs?limit=20&offset=0
+GET /api/blogs/:slug
 ```
 
 ### 创建 Creem Checkout

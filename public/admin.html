@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>后台数据</title>
+    <title>Admin Dashboard</title>
     <link rel="stylesheet" href="/admin.css">
   </head>
   <body>
@@ -11,35 +11,35 @@
       <header class="topbar">
         <div>
           <p class="eyebrow">Admin</p>
-          <h1>运营后台</h1>
+          <h1>Dashboard</h1>
         </div>
         <form class="auth" id="authForm">
           <input id="adminKey" name="adminKey" type="password" autocomplete="off" placeholder="ADMIN_API_KEY">
-          <select id="days" name="days" aria-label="天数">
-            <option value="7">7 天</option>
-            <option value="30" selected>30 天</option>
-            <option value="90">90 天</option>
-            <option value="120">120 天</option>
+          <select id="days" name="days" aria-label="Range">
+            <option value="7">7 days</option>
+            <option value="30" selected>30 days</option>
+            <option value="90">90 days</option>
+            <option value="120">120 days</option>
           </select>
-          <button type="submit">刷新</button>
+          <button type="submit">Refresh</button>
         </form>
       </header>
 
-      <section class="metrics" aria-label="核心指标">
+      <section class="metrics" aria-label="Core metrics">
         <article class="metric">
-          <span>总用户数</span>
+          <span>Total users</span>
           <strong id="totalUsers">-</strong>
         </article>
         <article class="metric">
-          <span>当天用户数</span>
+          <span>Today users</span>
           <strong id="todayUsers">-</strong>
         </article>
         <article class="metric">
-          <span>当天收入</span>
+          <span>Today revenue</span>
           <strong id="todayRevenue">-</strong>
         </article>
         <article class="metric">
-          <span>总收入</span>
+          <span>Total revenue</span>
           <strong id="totalRevenue">-</strong>
         </article>
       </section>
@@ -47,28 +47,97 @@
       <section class="panel">
         <div class="panelHead">
           <div>
-            <h2>每日收入</h2>
-            <p id="updatedAt">等待加载</p>
+            <h2>Daily revenue</h2>
+            <p id="updatedAt">Waiting for data</p>
           </div>
           <span id="localDate" class="pill">-</span>
         </div>
-        <div id="chart" class="chart" aria-label="每日收入柱状图"></div>
+        <div id="chart" class="chart" aria-label="Daily revenue chart"></div>
       </section>
 
       <section class="panel">
         <div class="panelHead">
-          <h2>收入明细</h2>
+          <h2>Revenue details</h2>
         </div>
         <div class="tableWrap">
           <table>
             <thead>
               <tr>
-                <th>日期</th>
-                <th>收入</th>
-                <th>支付数</th>
+                <th>Date</th>
+                <th>Revenue</th>
+                <th>Payments</th>
               </tr>
             </thead>
             <tbody id="dailyRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panelHead">
+          <div>
+            <h2>Upload Blog</h2>
+            <p>Create or update a blog post.</p>
+          </div>
+          <span id="blogCount" class="pill">0 posts</span>
+        </div>
+
+        <form id="blogForm" class="blogForm">
+          <input type="hidden" id="blogId">
+          <label>
+            <span>Title</span>
+            <input id="blogTitle" name="title" type="text" required placeholder="Blog title">
+          </label>
+          <label>
+            <span>Slug</span>
+            <input id="blogSlug" name="slug" type="text" placeholder="blog-title">
+          </label>
+          <label>
+            <span>Author</span>
+            <input id="blogAuthor" name="authorName" type="text" placeholder="Admin">
+          </label>
+          <label>
+            <span>Status</span>
+            <select id="blogStatus" name="status">
+              <option value="draft">Draft</option>
+              <option value="published">Published</option>
+            </select>
+          </label>
+          <label class="wide">
+            <span>Cover image URL</span>
+            <input id="blogCover" name="coverImageUrl" type="url" placeholder="https://example.com/cover.jpg">
+          </label>
+          <label class="wide">
+            <span>Excerpt</span>
+            <textarea id="blogExcerpt" name="excerpt" rows="3" placeholder="Short summary"></textarea>
+          </label>
+          <label class="wide">
+            <span>Content</span>
+            <textarea id="blogContent" name="content" rows="12" required placeholder="Write the blog content here"></textarea>
+          </label>
+          <div class="formActions wide">
+            <button type="submit">Save blog</button>
+            <button type="button" id="resetBlog" class="secondary">New blog</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel">
+        <div class="panelHead">
+          <h2>Blog posts</h2>
+          <button id="reloadBlogs" class="secondary" type="button">Reload</button>
+        </div>
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Published</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="blogRows"></tbody>
           </table>
         </div>
       </section>

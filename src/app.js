@@ -2,6 +2,14 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { requireAdmin } from './auth.js';
+import {
+  createBlogPost,
+  deleteBlogPost,
+  getPublishedBlogPost,
+  listAdminBlogPosts,
+  listPublishedBlogPosts,
+  updateBlogPost
+} from './blog.js';
 import { createCreemCheckout, handleCreemWebhook } from './creem.js';
 import { getAdminMetrics } from './metrics.js';
 import { getOrCreateSiteSession } from './site.js';
@@ -152,6 +160,52 @@ async function route(request) {
     requireAdmin(request);
     const days = url.searchParams.get('days') || 30;
     return jsonResponse(request, 200, await getAdminMetrics(days));
+  }
+
+  if (request.method === 'GET' && url.pathname === '/api/admin/blogs') {
+    requireAdmin(request);
+    return jsonResponse(request, 200, {
+      blogs: await listAdminBlogPosts({
+        limit: url.searchParams.get('limit'),
+        offset: url.searchParams.get('offset')
+      })
+    });
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/admin/blogs') {
+    requireAdmin(request);
+    return jsonResponse(request, 201, {
+      blog: await createBlogPost(await readJson(request))
+    });
+  }
+
+  const adminBlogMatch = url.pathname.match(/^\/api\/admin\/blogs\/([^/]+)$/);
+  if (adminBlogMatch && request.method === 'PATCH') {
+    requireAdmin(request);
+    return jsonResponse(request, 200, {
+      blog: await updateBlogPost(adminBlogMatch[1], await readJson(request))
+    });
+  }
+
+  if (adminBlogMatch && request.method === 'DELETE') {
+    requireAdmin(request);
+    return jsonResponse(request, 200, await deleteBlogPost(adminBlogMatch[1]));
+  }
+
+  if (request.method === 'GET' && url.pathname === '/api/blogs') {
+    return jsonResponse(request, 200, {
+      blogs: await listPublishedBlogPosts({
+        limit: url.searchParams.get('limit'),
+        offset: url.searchParams.get('offset')
+      })
+    });
+  }
+
+  const publicBlogMatch = url.pathname.match(/^\/api\/blogs\/([^/]+)$/);
+  if (publicBlogMatch && request.method === 'GET') {
+    return jsonResponse(request, 200, {
+      blog: await getPublishedBlogPost(publicBlogMatch[1])
+    });
   }
 
   if (request.method === 'POST' && url.pathname === '/api/users') {
