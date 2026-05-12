@@ -160,7 +160,7 @@ create table if not exists public.ai_generations (
   updated_at timestamptz not null default now()
 );
 ```
-
+/*******************api 文档*******************/
 ## 4. Supabase Google 登录接入
 
 前端用 Supabase Google OAuth 登录后，把 Supabase user 传给后端。
