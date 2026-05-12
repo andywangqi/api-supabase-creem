@@ -1,7 +1,13 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { requireAdmin } from './auth.js';
+import {
+  hasAdminSession,
+  isAdminKeyValid,
+  requireAdmin,
+  serializeAdminLogoutCookie,
+  serializeAdminSessionCookie
+} from './auth.js';
 import {
   saveSupabaseAuthUser,
   getCurrentActor
@@ -35,6 +41,8 @@ import { AppError, upsertUser } from './supabase.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = resolve(join(__dirname, '..', 'public'));
+const adminViewPath = resolve(join(__dirname, 'views', 'admin.html'));
+const adminLoginViewPath = resolve(join(__dirname, 'views', 'admin-login.html'));
 
 const mimeTypes = new Map([
   ['.html', 'text/html; charset=utf-8'],
@@ -91,6 +99,14 @@ function errorResponse(request, status, message, details) {
   });
 }
 
+function isAdminPagePath(pathname) {
+  return pathname === '/admin' || pathname === '/api/admin-page';
+}
+
+function isAdminLoginPagePath(pathname) {
+  return pathname === '/admin/login' || pathname === '/api/admin-login-page';
+}
+
 async function readJson(request) {
   const text = await request.text();
   if (!text) return {};
@@ -136,6 +152,22 @@ async function staticResponse(request, requestPath) {
   }
 }
 
+async function viewResponse(request, filePath) {
+  try {
+    const file = await readFile(filePath);
+    return response(request, file, {
+      status: 200,
+      headers: {
+        'content-type': 'text/html; charset=utf-8',
+        'cache-control': 'no-store'
+      }
+    });
+  } catch (error) {
+    if (error?.code === 'ENOENT') return null;
+    throw error;
+  }
+}
+
 async function route(request) {
   if (request.method === 'OPTIONS') {
     return response(request, null, { status: 204 });
@@ -150,8 +182,27 @@ async function route(request) {
     });
   }
 
-  if (request.method === 'GET' && url.pathname === '/admin') {
-    const page = await staticResponse(request, '/admin.html');
+  if (request.method === 'GET' && isAdminPagePath(url.pathname)) {
+    if (!hasAdminSession(request)) {
+      return response(request, null, {
+        status: 302,
+        headers: { location: '/admin/login' }
+      });
+    }
+
+    const page = await viewResponse(request, adminViewPath);
+    if (page) return page;
+  }
+
+  if (request.method === 'GET' && isAdminLoginPagePath(url.pathname)) {
+    if (hasAdminSession(request)) {
+      return response(request, null, {
+        status: 302,
+        headers: { location: '/admin' }
+      });
+    }
+
+    const page = await viewResponse(request, adminLoginViewPath);
     if (page) return page;
   }
 
@@ -187,6 +238,39 @@ async function route(request) {
         lastSeenAt: user.last_seen_at
       },
       subscription: await getActiveSubscription(user.id)
+    });
+  }
+
+  if (request.method === 'GET' && url.pathname === '/api/admin/session') {
+    return jsonResponse(request, 200, {
+      authenticated: hasAdminSession(request)
+    });
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/admin/login') {
+    const body = await readJson(request);
+    const provided =
+      body.adminKey ||
+      body.admin_key ||
+      request.headers.get('x-admin-key') ||
+      (request.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+
+    if (!isAdminKeyValid(provided)) {
+      throw new AppError('Unauthorized', 401);
+    }
+
+    return jsonResponse(request, 200, {
+      ok: true
+    }, {
+      'set-cookie': serializeAdminSessionCookie(request)
+    });
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/admin/logout') {
+    return jsonResponse(request, 200, {
+      ok: true
+    }, {
+      'set-cookie': serializeAdminLogoutCookie(request)
     });
   }
 

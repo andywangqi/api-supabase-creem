@@ -2,11 +2,23 @@
   "rewrites": [
     {
       "source": "/",
-      "destination": "/admin.html"
+      "destination": "/api/admin-page"
     },
     {
       "source": "/admin",
-      "destination": "/admin.html"
+      "destination": "/api/admin-page"
+    },
+    {
+      "source": "/admin.html",
+      "destination": "/api/admin-page"
+    },
+    {
+      "source": "/admin/login",
+      "destination": "/api/admin-login-page"
+    },
+    {
+      "source": "/admin/login.html",
+      "destination": "/api/admin-login-page"
     },
     {
       "source": "/payment-success",

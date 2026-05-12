@@ -14,7 +14,6 @@
           <h1>Dashboard</h1>
         </div>
         <form class="auth" id="authForm">
-          <input id="adminKey" name="adminKey" type="password" autocomplete="off" placeholder="ADMIN_API_KEY">
           <select id="days" name="days" aria-label="Range">
             <option value="7">7 days</option>
             <option value="30" selected>30 days</option>
@@ -22,6 +21,7 @@
             <option value="120">120 days</option>
           </select>
           <button type="submit">Refresh</button>
+          <button type="button" id="logoutButton" class="secondary">Logout</button>
         </form>
       </header>
 

@@ -1,5 +1,4 @@
 const form = document.querySelector('#authForm');
-const adminKeyInput = document.querySelector('#adminKey');
 const daysInput = document.querySelector('#days');
 const statusNode = document.querySelector('#status');
 const chart = document.querySelector('#chart');
@@ -11,6 +10,7 @@ const reloadBlogsButton = document.querySelector('#reloadBlogs');
 const userRows = document.querySelector('#userRows');
 const userSearchForm = document.querySelector('#userSearchForm');
 const reloadUsersButton = document.querySelector('#reloadUsers');
+const logoutButton = document.querySelector('#logoutButton');
 
 const nodes = {
   totalUsers: document.querySelector('#totalUsers'),
@@ -33,16 +33,26 @@ const nodes = {
 
 let blogs = [];
 let users = [];
-adminKeyInput.value = localStorage.getItem('adminApiKey') || '';
 
 function adminHeaders() {
-  const key = adminKeyInput.value.trim();
-  if (!key) throw new Error('ADMIN_API_KEY is required');
-  localStorage.setItem('adminApiKey', key);
   return {
-    'content-type': 'application/json',
-    'x-admin-key': key
+    'content-type': 'application/json'
   };
+}
+
+async function readJsonResponse(response, fallbackMessage) {
+  const payload = await response.json().catch(() => ({}));
+
+  if (response.status === 401) {
+    window.location.href = '/admin/login';
+    throw new Error('Unauthorized');
+  }
+
+  if (!response.ok) {
+    throw new Error(payload?.error?.message || fallbackMessage);
+  }
+
+  return payload;
 }
 
 function setStatus(message, isError = false) {
@@ -199,10 +209,10 @@ function renderUsers() {
 
 async function loadMetrics() {
   const response = await fetch(`/api/admin/metrics?days=${encodeURIComponent(daysInput.value)}`, {
+    credentials: 'same-origin',
     headers: adminHeaders()
   });
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload?.error?.message || 'Metrics load failed');
+  const payload = await readJsonResponse(response, 'Metrics load failed');
 
   const { metrics, dailyRevenue } = payload;
   nodes.totalUsers.textContent = number(metrics.totalUsers);
@@ -218,10 +228,10 @@ async function loadMetrics() {
 
 async function loadBlogs() {
   const response = await fetch('/api/admin/blogs?limit=50', {
+    credentials: 'same-origin',
     headers: adminHeaders()
   });
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload?.error?.message || 'Blog load failed');
+  const payload = await readJsonResponse(response, 'Blog load failed');
 
   blogs = payload.blogs || [];
   renderBlogs();
@@ -230,10 +240,10 @@ async function loadBlogs() {
 async function loadUsers() {
   const search = nodes.userSearch.value.trim();
   const response = await fetch(`/api/admin/users?limit=50&search=${encodeURIComponent(search)}`, {
+    credentials: 'same-origin',
     headers: adminHeaders()
   });
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload?.error?.message || 'Users load failed');
+  const payload = await readJsonResponse(response, 'Users load failed');
 
   users = payload.users || [];
   renderUsers();
@@ -259,11 +269,11 @@ async function saveBlog() {
 
   const response = await fetch(id ? `/api/admin/blogs/${encodeURIComponent(id)}` : '/api/admin/blogs', {
     method: id ? 'PATCH' : 'POST',
+    credentials: 'same-origin',
     headers: adminHeaders(),
     body: JSON.stringify(body)
   });
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload?.error?.message || 'Blog save failed');
+  await readJsonResponse(response, 'Blog save failed');
 
   resetBlogForm();
   await loadBlogs();
@@ -273,14 +283,14 @@ async function saveBlog() {
 async function adjustCredits(userId, action, amount) {
   const response = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/credits/${action}`, {
     method: 'POST',
+    credentials: 'same-origin',
     headers: adminHeaders(),
     body: JSON.stringify({
       amount,
       reason: 'Admin adjustment'
     })
   });
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload?.error?.message || 'Credit adjustment failed');
+  const payload = await readJsonResponse(response, 'Credit adjustment failed');
 
   await loadUsers();
   setStatus(`Credits updated: ${number(payload.credits.creditsBalance)}`);
@@ -334,6 +344,13 @@ reloadBlogsButton.addEventListener('click', () => {
 reloadUsersButton.addEventListener('click', () => {
   loadUsers().catch((error) => setStatus(error.message, true));
 });
+logoutButton.addEventListener('click', async () => {
+  await fetch('/api/admin/logout', {
+    method: 'POST',
+    credentials: 'same-origin'
+  });
+  window.location.href = '/admin/login';
+});
 userSearchForm.addEventListener('submit', (event) => {
   event.preventDefault();
   loadUsers().catch((error) => setStatus(error.message, true));
@@ -343,6 +360,4 @@ nodes.blogTitle.addEventListener('input', () => {
   if (!nodes.blogId.value) nodes.blogSlug.value = slugify(nodes.blogTitle.value);
 });
 
-if (adminKeyInput.value) {
-  refreshAll().catch((error) => setStatus(error.message, true));
-}
+refreshAll().catch((error) => setStatus(error.message, true));

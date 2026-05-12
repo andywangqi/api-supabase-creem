@@ -4,7 +4,7 @@
 
 ## 功能
 
-- 后台页面：`/admin`
+- 后台页面：`/admin`，必须先登录
 - 用户统计：总用户数、当天用户数
 - 收入统计：当天收入、总收入、每日收入
 - 前端网站初始化：自动创建匿名用户
@@ -19,8 +19,10 @@
 
 ```text
 api/[...path].js          Vercel Function 入口
-public/admin.html         后台页面
+src/views/admin.html      后台页面模板
+src/views/admin-login.html 后台登录页面模板
 public/admin.js           后台交互逻辑
+public/admin-login.js     后台登录逻辑
 src/app.js                API 路由
 src/site.js               匿名登录/用户初始化
 src/auth-supabase.js      Supabase Google OAuth token 处理
@@ -72,7 +74,7 @@ SUPABASE_JWT_SECRET=your-supabase-jwt-secret
 注意：
 
 - `SUPABASE_SERVICE_ROLE_KEY` 只能放服务端或 Vercel 环境变量，不能暴露到前端。
-- `ADMIN_API_KEY` 是后台访问密钥，进入 `/admin` 后输入。
+- `ADMIN_API_KEY` 是后台登录密码。访问 `/admin` 会先跳转到 `/admin/login`，登录成功后写入 HttpOnly `admin_session` Cookie。
 - `APP_TIMEZONE_OFFSET_MINUTES=480` 表示 UTC+8，用于当天用户和当天收入统计。
 - `CREEM_TEST_MODE=true` 使用 Creem 测试环境，上线后改为 `false`。
 - `CREEM_PRODUCT_*` 是后端固定商品映射，前端不能传价格或 Creem product id。
@@ -116,6 +118,12 @@ node src/server.js
 http://localhost:3000/admin
 ```
 
+未登录会跳转到：
+
+```text
+http://localhost:3000/admin/login
+```
+
 运行测试：
 
 ```bash
@@ -136,7 +144,8 @@ https://your-domain.com/api/creem/webhook
 
 Vercel 路由：
 
-- `/admin`：后台页面
+- `/admin`：后台页面，未登录跳转到 `/admin/login`
+- `/admin/login`：后台登录页面
 - `/api/*`：API
 - `/api/site/session`：前端初始化/匿名登录
 - `/api/auth/supabase`：保存 Supabase Google 登录用户
@@ -153,7 +162,14 @@ Vercel 路由：
 
 ## API 鉴权
 
-后台 API 需要传 `ADMIN_API_KEY`，二选一：
+后台页面访问流程：
+
+1. 打开 `/admin`。
+2. 未登录会跳转到 `/admin/login`。
+3. 输入 `ADMIN_API_KEY` 登录。
+4. 登录成功后浏览器会保存 HttpOnly `admin_session` Cookie，后台页面请求自动带上登录态。
+
+脚本或服务端直接调用后台 API 时，仍可传 `ADMIN_API_KEY`，二选一：
 
 ```http
 Authorization: Bearer <ADMIN_API_KEY>
