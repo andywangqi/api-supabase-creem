@@ -2,7 +2,7 @@
 
 用于 Vercel 部署的轻量 Node.js 后端，数据库使用 Supabase，支付使用 Creem。
 
-完整接口文档见 [API.md](./API.md)。
+前端接口文档见 [FRONTEND_API.md](./FRONTEND_API.md)，后台接口文档见 [ADMIN_API.md](./ADMIN_API.md)。
 
 ## 功能
 
