@@ -47,7 +47,7 @@ sql/schema.sql            Supabase 建表与 RPC
 
 ```env
 PORT=3000
-APP_BASE_URL=http://localhost:3000
+APP_BASE_URL=https://admin.faceshapedetector.store
 APP_TIMEZONE_OFFSET_MINUTES=480
 DEFAULT_CURRENCY=USD
 APP_ANON_COOKIE_NAME=anon_user_id
@@ -141,7 +141,7 @@ node --test --test-isolation=none
 5. 在 Creem 后台配置 Webhook：
 
 ```text
-https://your-domain.com/api/creem/webhook
+https://admin.faceshapedetector.store/api/creem/webhook
 ```
 
 Vercel 路由：

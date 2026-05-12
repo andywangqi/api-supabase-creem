@@ -3,7 +3,7 @@
 本文档覆盖 `api-supabase-creem` 当前后端接口。部署到 Vercel 后，所有接口都以你的域名为前缀，例如：
 
 ```text
-https://your-domain.com
+https://admin.faceshapedetector.store
 ```
 
 本地开发默认：
@@ -450,7 +450,7 @@ Cookie: anon_user_id=<anonymous_id>
   "reportId": "uuid",
   "email": "user@example.com",
   "name": "User Name",
-  "successUrl": "https://your-domain.com/payment-success"
+  "successUrl": "https://admin.faceshapedetector.store/payment-success"
 }
 ```
 
@@ -487,7 +487,7 @@ Cookie: anon_user_id=<anonymous_id>
   "userId": "optional-external-id",
   "anonymousId": "optional-anonymous-id",
   "requestId": "optional-request-id",
-  "successUrl": "https://your-domain.com/payment-success",
+  "successUrl": "https://admin.faceshapedetector.store/payment-success",
   "metadata": {},
   "units": 1,
   "discountCode": "OPTIONAL"
@@ -1058,6 +1058,6 @@ webhook-signature: <signature>
 ### 脚本调用后台 API
 
 ```bash
-curl "https://your-domain.com/api/admin/metrics?days=30" \
+curl "https://admin.faceshapedetector.store/api/admin/metrics?days=30" \
   -H "x-admin-key: <ADMIN_API_KEY>"
 ```
