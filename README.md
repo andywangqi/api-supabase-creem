@@ -2,6 +2,8 @@
 
 用于 Vercel 部署的轻量 Node.js 后端，数据库使用 Supabase，支付使用 Creem。
 
+完整接口文档见 [API.md](./API.md)。
+
 ## 功能
 
 - 后台页面：`/admin`，必须先登录
