@@ -34,8 +34,27 @@ const nodes = {
 let blogs = [];
 let users = [];
 
+async function readResponsePayload(response) {
+  const text = await response.text();
+  const contentType = response.headers.get('content-type') || '';
+
+  if (contentType.includes('application/json')) {
+    try {
+      return JSON.parse(text);
+    } catch {
+      return {};
+    }
+  }
+
+  return {
+    error: {
+      message: text || 'Request failed'
+    }
+  };
+}
+
 async function readJsonResponse(response, fallbackMessage) {
-  const payload = await response.json().catch(() => ({}));
+  const payload = await readResponsePayload(response);
 
   if (response.status === 401) {
     window.location.href = '/admin/login';
