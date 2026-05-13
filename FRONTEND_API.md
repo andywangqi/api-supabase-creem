@@ -51,6 +51,26 @@ http://localhost:3000
 
 ## 接口
 
+## 请求方式总表
+
+| Method | Path | 用途 |
+| --- | --- | --- |
+| `GET` | `/health` | 健康检查 |
+| `GET` | `/api/health` | 健康检查兼容路径 |
+| `GET` | `/api/site/session` | 读取或创建匿名用户 |
+| `POST` | `/api/site/session` | 创建匿名用户或升级邮箱用户 |
+| `POST` | `/api/auth/supabase` | 保存 Supabase Google 登录用户 |
+| `GET` | `/api/site/credits` | 查询当前用户积分 |
+| `POST` | `/api/site/credits/deduct` | 扣减当前用户积分 |
+| `POST` | `/api/face/detect/allow` | 检查并递增检测次数 |
+| `POST` | `/api/face/reports` | 保存脸型检测报告 |
+| `GET` | `/api/face/reports/:id` | 读取检测报告 |
+| `GET` | `/api/site/access?reportId=...` | 查询权益和报告解锁状态 |
+| `POST` | `/api/site/checkout` | 按 `planKey` 创建 checkout |
+| `POST` | `/api/ai/try-on` | 创建 AI 生成记录并扣积分 |
+| `GET` | `/api/blogs?limit=20&offset=0` | 公开 Blog 列表 |
+| `GET` | `/api/blogs/:slug` | 公开单篇 Blog |
+
 ### `GET /health`
 
 也支持 `GET /api/health`。
@@ -315,4 +335,3 @@ Authorization: Bearer <supabase_access_token>
 
 1. `POST /api/site/checkout`，`planKey=pro_monthly` 或 `studio_monthly`
 2. 支付后查 `GET /api/site/access`
-

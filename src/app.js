@@ -37,6 +37,7 @@ import { createFaceReport, getFaceReportForUser, ensureReportOwnedByUser, report
 import { getOrCreateSiteSession } from './site.js';
 import { getActiveSubscription } from './subscriptions.js';
 import { detectAllowanceForUser } from './usage.js';
+import { missing } from './config.js';
 import { AppError, upsertUser } from './supabase.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -261,6 +262,11 @@ async function route(request) {
   }
 
   if (request.method === 'POST' && pathname === '/api/admin/login') {
+    const miss = missing(['adminApiKey']);
+    if (miss.length) {
+      throw new AppError('Missing ADMIN_API_KEY', 500);
+    }
+
     const body = await readJson(request);
     const provided =
       body.adminKey ||

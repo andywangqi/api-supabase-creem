@@ -19,6 +19,36 @@ http://localhost:3000
 - 脚本调用后台 API 可直接带 `Authorization: Bearer <ADMIN_API_KEY>` 或 `x-admin-key: <ADMIN_API_KEY>`
 - 所有后台接口都返回 JSON
 
+## 请求方式总表
+
+页面路由不是 JSON API：
+
+| Method | Path | 用途 |
+| --- | --- | --- |
+| `GET` | `/admin` | 后台首页，未登录跳转到 `/admin/login` |
+| `GET` | `/admin/login` | 后台登录页面 |
+
+后台 API：
+
+| Method | Path | 用途 |
+| --- | --- | --- |
+| `GET` | `/api/admin/session` | 查询后台登录态 |
+| `POST` | `/api/admin/login` | 使用 `ADMIN_API_KEY` 登录 |
+| `POST` | `/api/admin/logout` | 退出登录 |
+| `GET` | `/api/admin/metrics?days=30` | 后台统计 |
+| `GET` | `/api/admin/users?limit=50&offset=0&search=...` | 用户列表 |
+| `GET` | `/api/admin/users/:id/credits` | 查询用户积分 |
+| `POST` | `/api/admin/users/:id/credits/add` | 增加积分 |
+| `POST` | `/api/admin/users/:id/credits/deduct` | 扣减积分 |
+| `POST` | `/api/admin/users/:id/credits` | 兼容积分增减接口 |
+| `GET` | `/api/admin/blogs?limit=50&offset=0` | 后台 Blog 列表 |
+| `POST` | `/api/admin/blogs` | 创建 Blog |
+| `PATCH` | `/api/admin/blogs/:id` | 更新 Blog |
+| `DELETE` | `/api/admin/blogs/:id` | 删除 Blog |
+| `POST` | `/api/users` | 内部创建或更新用户 |
+| `POST` | `/api/creem/checkout` | 通用 Creem checkout |
+| `POST` | `/api/creem/webhook` | Creem webhook |
+
 ## 后台登录
 
 ### `GET /admin`
@@ -43,7 +73,7 @@ http://localhost:3000
 
 ### `POST /api/admin/login`
 
-使用 `ADMIN_API_KEY` 登录。
+使用 `ADMIN_API_KEY` 登录。注意：登录 API 只能用 `POST /api/admin/login`，`GET /admin/login` 只是页面路由。
 
 请求：
 

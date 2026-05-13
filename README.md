@@ -144,23 +144,29 @@ node --test --test-isolation=none
 https://admin.faceshapedetector.store/api/creem/webhook
 ```
 
-Vercel 路由：
+Vercel 路由和请求方式：
 
-- `/admin`：后台页面，未登录跳转到 `/admin/login`
-- `/admin/login`：后台登录页面
-- `/api/*`：API
-- `/api/site/session`：前端初始化/匿名登录
-- `/api/auth/supabase`：保存 Supabase Google 登录用户
-- `/api/face/detect/allow`：检测次数限制
-- `/api/face/reports`：保存脸型检测报告
-- `/api/site/access`：当前用户权益
-- `/api/site/checkout`：按 planKey 创建 Creem Checkout
-- `/api/ai/try-on`：AI try-on 扣积分和生成记录
-- `/api/site/credits`：前端查询当前用户积分
-- `/api/admin/users`：后台用户列表和积分管理
-- `/api/admin/blogs`：后台 Blog 管理
-- `/api/blogs`：前台公开 Blog API
-- `/payment-success`：支付成功页
+- `GET /admin`：后台页面，未登录跳转到 `/admin/login`
+- `GET /admin/login`：后台登录页面
+- `POST /api/admin/login`：后台登录 API
+- `GET /api/admin/session`：后台登录态
+- `POST /api/admin/logout`：后台退出登录
+- `GET /health` 或 `GET /api/health`：健康检查
+- `GET /api/site/session`、`POST /api/site/session`：前端初始化/匿名登录
+- `POST /api/auth/supabase`：保存 Supabase Google 登录用户
+- `POST /api/face/detect/allow`：检测次数限制
+- `POST /api/face/reports`、`GET /api/face/reports/:id`：脸型检测报告
+- `GET /api/site/access`：当前用户权益
+- `POST /api/site/checkout`：按 planKey 创建 Creem Checkout
+- `POST /api/ai/try-on`：AI try-on 扣积分和生成记录
+- `GET /api/site/credits`、`POST /api/site/credits/deduct`：前端积分
+- `GET /api/admin/metrics`：后台统计
+- `GET /api/admin/users`、`GET /api/admin/users/:id/credits`、`POST /api/admin/users/:id/credits/add`、`POST /api/admin/users/:id/credits/deduct`：后台用户和积分管理
+- `GET /api/admin/blogs`、`POST /api/admin/blogs`、`PATCH /api/admin/blogs/:id`、`DELETE /api/admin/blogs/:id`：后台 Blog 管理
+- `GET /api/blogs`、`GET /api/blogs/:slug`：前台公开 Blog API
+- `POST /api/users`：内部用户写入
+- `POST /api/creem/checkout`、`POST /api/creem/webhook`：Creem 支付
+- `GET /payment-success`：支付成功页
 
 ## API 鉴权
 
@@ -168,7 +174,7 @@ Vercel 路由：
 
 1. 打开 `/admin`。
 2. 未登录会跳转到 `/admin/login`。
-3. 输入 `ADMIN_API_KEY` 登录。
+3. 输入 `ADMIN_API_KEY`，页面会调用 `POST /api/admin/login` 登录。
 4. 登录成功后浏览器会保存 HttpOnly `admin_session` Cookie，后台页面请求自动带上登录态。
 
 脚本或服务端直接调用后台 API 时，仍可传 `ADMIN_API_KEY`，二选一：

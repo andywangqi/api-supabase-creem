@@ -107,6 +107,11 @@ test('allows admin login through explicit Vercel function entry', async () => {
   assert.deepEqual(await response.json(), { ok: true });
 });
 
+test('does not allow GET for admin login api', async () => {
+  const response = await app.fetch(new Request('https://example.com/api/admin/login'));
+  assert.equal(response.status, 404);
+});
+
 test('reports admin session state', async () => {
   const anonymous = await app.fetch(new Request('https://example.com/api/admin/session'));
   assert.deepEqual(await anonymous.json(), { authenticated: false });
