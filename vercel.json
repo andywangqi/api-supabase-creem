@@ -21,6 +21,10 @@
       "destination": "/api/admin-login-page"
     },
     {
+      "source": "/api/:path*",
+      "destination": "/api/route?path=:path*"
+    },
+    {
       "source": "/payment-success",
       "destination": "/payment-success.html"
     },

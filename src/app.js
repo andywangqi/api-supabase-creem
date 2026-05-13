@@ -107,6 +107,18 @@ function isAdminLoginPagePath(pathname) {
   return pathname === '/admin/login' || pathname === '/api/admin-login-page';
 }
 
+function resolveRequestPath(url) {
+  if (url.pathname !== '/api/route') return url.pathname;
+
+  const path = url.searchParams.get('path') || '';
+  if (!path) return url.pathname;
+
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  if (cleanPath.startsWith('/api/')) return cleanPath;
+
+  return `/api${cleanPath}`;
+}
+
 async function readJson(request) {
   const text = await request.text();
   if (!text) return {};
@@ -174,15 +186,16 @@ async function route(request) {
   }
 
   const url = new URL(request.url);
+  const pathname = resolveRequestPath(url);
 
-  if (request.method === 'GET' && url.pathname === '/') {
+  if (request.method === 'GET' && pathname === '/') {
     return response(request, null, {
       status: 302,
       headers: { location: '/admin' }
     });
   }
 
-  if (request.method === 'GET' && isAdminPagePath(url.pathname)) {
+  if (request.method === 'GET' && isAdminPagePath(pathname)) {
     if (!hasAdminSession(request)) {
       return response(request, null, {
         status: 302,
@@ -194,7 +207,7 @@ async function route(request) {
     if (page) return page;
   }
 
-  if (request.method === 'GET' && isAdminLoginPagePath(url.pathname)) {
+  if (request.method === 'GET' && isAdminLoginPagePath(pathname)) {
     if (hasAdminSession(request)) {
       return response(request, null, {
         status: 302,
@@ -206,12 +219,12 @@ async function route(request) {
     if (page) return page;
   }
 
-  if (request.method === 'GET' && url.pathname === '/payment-success') {
+  if (request.method === 'GET' && pathname === '/payment-success') {
     const page = await staticResponse(request, '/payment-success.html');
     if (page) return page;
   }
 
-  if (request.method === 'GET' && (url.pathname === '/health' || url.pathname === '/api/health')) {
+  if (request.method === 'GET' && (pathname === '/health' || pathname === '/api/health')) {
     return jsonResponse(request, 200, {
       ok: true,
       service: 'api-supabase-creem',
@@ -219,13 +232,13 @@ async function route(request) {
     });
   }
 
-  if ((request.method === 'GET' || request.method === 'POST') && url.pathname === '/api/site/session') {
+  if ((request.method === 'GET' || request.method === 'POST') && pathname === '/api/site/session') {
     const body = request.method === 'POST' ? await readJson(request) : {};
     const session = await getOrCreateSiteSession(request, body);
     return jsonResponse(request, 200, session.body, session.headers);
   }
 
-  if (request.method === 'POST' && url.pathname === '/api/auth/supabase') {
+  if (request.method === 'POST' && pathname === '/api/auth/supabase') {
     const user = await saveSupabaseAuthUser(request, await readJson(request));
     return jsonResponse(request, 200, {
       user: {
@@ -241,13 +254,13 @@ async function route(request) {
     });
   }
 
-  if (request.method === 'GET' && url.pathname === '/api/admin/session') {
+  if (request.method === 'GET' && pathname === '/api/admin/session') {
     return jsonResponse(request, 200, {
       authenticated: hasAdminSession(request)
     });
   }
 
-  if (request.method === 'POST' && url.pathname === '/api/admin/login') {
+  if (request.method === 'POST' && pathname === '/api/admin/login') {
     const body = await readJson(request);
     const provided =
       body.adminKey ||
@@ -266,7 +279,7 @@ async function route(request) {
     });
   }
 
-  if (request.method === 'POST' && url.pathname === '/api/admin/logout') {
+  if (request.method === 'POST' && pathname === '/api/admin/logout') {
     return jsonResponse(request, 200, {
       ok: true
     }, {
@@ -274,31 +287,31 @@ async function route(request) {
     });
   }
 
-  if (request.method === 'GET' && url.pathname === '/api/site/credits') {
+  if (request.method === 'GET' && pathname === '/api/site/credits') {
     return jsonResponse(request, 200, {
       user: await getCurrentSiteUserCredits(request)
     });
   }
 
-  if (request.method === 'POST' && url.pathname === '/api/site/credits/deduct') {
+  if (request.method === 'POST' && pathname === '/api/site/credits/deduct') {
     return jsonResponse(request, 200, {
       user: await deductCurrentSiteUserCredits(request, await readJson(request))
     });
   }
 
-  if (request.method === 'POST' && url.pathname === '/api/face/detect/allow') {
+  if (request.method === 'POST' && pathname === '/api/face/detect/allow') {
     const actor = await getCurrentActor(request, { createAnonymous: true });
     return jsonResponse(request, 200, await detectAllowanceForUser(actor.user), actor.headers);
   }
 
-  if (request.method === 'POST' && url.pathname === '/api/face/reports') {
+  if (request.method === 'POST' && pathname === '/api/face/reports') {
     const actor = await getCurrentActor(request, { createAnonymous: true });
     return jsonResponse(request, 201, {
       report: await createFaceReport(actor.user, await readJson(request))
     }, actor.headers);
   }
 
-  const faceReportMatch = url.pathname.match(/^\/api\/face\/reports\/([^/]+)$/);
+  const faceReportMatch = pathname.match(/^\/api\/face\/reports\/([^/]+)$/);
   if (faceReportMatch && request.method === 'GET') {
     const actor = await getCurrentActor(request, { createAnonymous: false });
     return jsonResponse(request, 200, {
@@ -306,7 +319,7 @@ async function route(request) {
     }, actor.headers);
   }
 
-  if (request.method === 'GET' && url.pathname === '/api/site/access') {
+  if (request.method === 'GET' && pathname === '/api/site/access') {
     const actor = await getCurrentActor(request, { createAnonymous: true });
     const reportId = url.searchParams.get('reportId');
     const subscription = await getActiveSubscription(actor.user.id);
@@ -330,25 +343,25 @@ async function route(request) {
     }, actor.headers);
   }
 
-  if (request.method === 'POST' && url.pathname === '/api/site/checkout') {
+  if (request.method === 'POST' && pathname === '/api/site/checkout') {
     const actor = await getCurrentActor(request, { createAnonymous: true });
     return jsonResponse(request, 201, await createSiteCheckout(actor.user, await readJson(request)), actor.headers);
   }
 
-  if (request.method === 'POST' && url.pathname === '/api/ai/try-on') {
+  if (request.method === 'POST' && pathname === '/api/ai/try-on') {
     const actor = await getCurrentActor(request, { requireAuth: true });
     return jsonResponse(request, 201, {
       generation: await createTryOnGeneration(actor.user, await readJson(request))
     });
   }
 
-  if (request.method === 'GET' && url.pathname === '/api/admin/metrics') {
+  if (request.method === 'GET' && pathname === '/api/admin/metrics') {
     requireAdmin(request);
     const days = url.searchParams.get('days') || 30;
     return jsonResponse(request, 200, await getAdminMetrics(days));
   }
 
-  if (request.method === 'GET' && url.pathname === '/api/admin/users') {
+  if (request.method === 'GET' && pathname === '/api/admin/users') {
     requireAdmin(request);
     return jsonResponse(request, 200, {
       users: await listAdminUsers({
@@ -359,7 +372,7 @@ async function route(request) {
     });
   }
 
-  const adminUserCreditsMatch = url.pathname.match(/^\/api\/admin\/users\/([^/]+)\/credits(?:\/(add|deduct))?$/);
+  const adminUserCreditsMatch = pathname.match(/^\/api\/admin\/users\/([^/]+)\/credits(?:\/(add|deduct))?$/);
   if (adminUserCreditsMatch && request.method === 'GET') {
     requireAdmin(request);
     return jsonResponse(request, 200, {
@@ -389,7 +402,7 @@ async function route(request) {
     });
   }
 
-  if (request.method === 'GET' && url.pathname === '/api/admin/blogs') {
+  if (request.method === 'GET' && pathname === '/api/admin/blogs') {
     requireAdmin(request);
     return jsonResponse(request, 200, {
       blogs: await listAdminBlogPosts({
@@ -399,14 +412,14 @@ async function route(request) {
     });
   }
 
-  if (request.method === 'POST' && url.pathname === '/api/admin/blogs') {
+  if (request.method === 'POST' && pathname === '/api/admin/blogs') {
     requireAdmin(request);
     return jsonResponse(request, 201, {
       blog: await createBlogPost(await readJson(request))
     });
   }
 
-  const adminBlogMatch = url.pathname.match(/^\/api\/admin\/blogs\/([^/]+)$/);
+  const adminBlogMatch = pathname.match(/^\/api\/admin\/blogs\/([^/]+)$/);
   if (adminBlogMatch && request.method === 'PATCH') {
     requireAdmin(request);
     return jsonResponse(request, 200, {
@@ -419,7 +432,7 @@ async function route(request) {
     return jsonResponse(request, 200, await deleteBlogPost(adminBlogMatch[1]));
   }
 
-  if (request.method === 'GET' && url.pathname === '/api/blogs') {
+  if (request.method === 'GET' && pathname === '/api/blogs') {
     return jsonResponse(request, 200, {
       blogs: await listPublishedBlogPosts({
         limit: url.searchParams.get('limit'),
@@ -428,14 +441,14 @@ async function route(request) {
     });
   }
 
-  const publicBlogMatch = url.pathname.match(/^\/api\/blogs\/([^/]+)$/);
+  const publicBlogMatch = pathname.match(/^\/api\/blogs\/([^/]+)$/);
   if (publicBlogMatch && request.method === 'GET') {
     return jsonResponse(request, 200, {
       blog: await getPublishedBlogPost(publicBlogMatch[1])
     });
   }
 
-  if (request.method === 'POST' && url.pathname === '/api/users') {
+  if (request.method === 'POST' && pathname === '/api/users') {
     const body = await readJson(request);
     const user = await upsertUser({
       id: body.id || body.userId,
@@ -447,18 +460,18 @@ async function route(request) {
     return jsonResponse(request, 201, { user });
   }
 
-  if (request.method === 'POST' && url.pathname === '/api/creem/checkout') {
+  if (request.method === 'POST' && pathname === '/api/creem/checkout') {
     const body = await readJson(request);
     return jsonResponse(request, 201, await createCreemCheckout(body));
   }
 
-  if (request.method === 'POST' && url.pathname === '/api/creem/webhook') {
+  if (request.method === 'POST' && pathname === '/api/creem/webhook') {
     const rawBody = await readRawBody(request);
     return jsonResponse(request, 200, await handleCreemWebhook(rawBody, request.headers));
   }
 
   if (request.method === 'GET') {
-    const file = await staticResponse(request, url.pathname);
+    const file = await staticResponse(request, pathname);
     if (file) return file;
   }
 

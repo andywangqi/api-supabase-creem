@@ -80,6 +80,19 @@ test('allows admin page after login', async () => {
   assert.equal(response.status, 200);
 });
 
+test('allows admin login through rewritten route entry', async () => {
+  const response = await app.fetch(new Request('https://example.com/api/route?path=admin/login', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({ adminKey: 'test_admin_key' })
+  }));
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { ok: true });
+});
+
 test('reports admin session state', async () => {
   const anonymous = await app.fetch(new Request('https://example.com/api/admin/session'));
   assert.deepEqual(await anonymous.json(), { authenticated: false });
