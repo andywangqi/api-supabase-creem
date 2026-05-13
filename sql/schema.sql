@@ -504,8 +504,14 @@ security definer
 set search_path = public
 as $$
   select
-    (select count(*) from public.app_users) as total_users,
-    (select count(*) from public.app_users where created_at >= p_day_start and created_at < p_day_end) as today_users,
+    (select count(*) from public.app_users where is_anonymous = false) as total_users,
+    (
+      select count(*)
+      from public.app_users
+      where is_anonymous = false
+        and created_at >= p_day_start
+        and created_at < p_day_end
+    ) as today_users,
     (
       select coalesce(sum(amount), 0)::bigint
       from public.payments

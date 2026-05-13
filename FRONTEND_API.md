@@ -131,6 +131,7 @@ http://localhost:3000
 
 - `email` 可选，不传就只创建/刷新匿名用户
 - 支持 `anonymousId`、`anonymous_id`、`x-anonymous-id`
+- 前端必须复用返回的 `anonymousId`：优先让浏览器通过 `credentials: 'include'` 带 Cookie；如果 Cookie 不能稳定发送，就把响应里的 `anonymousId` 存在本地，后续请求放到 `x-anonymous-id` 或 body 里。
 
 ### `POST /api/auth/supabase`
 
@@ -141,6 +142,7 @@ http://localhost:3000
 ```http
 Authorization: Bearer <supabase_access_token>
 Cookie: anon_user_id=<anonymous_id>
+x-anonymous-id: <anonymous_id>
 ```
 
 请求：

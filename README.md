@@ -101,7 +101,7 @@ sql/schema.sql
 - `user_entitlements`：一次性购买的报告解锁权益
 - `user_subscriptions`：订阅状态
 - `ai_generations`：AI try-on 生成记录
-- `get_admin_metrics`：后台统计 RPC
+- `get_admin_metrics`：后台统计 RPC，用户数只统计已识别/已登录用户，不统计匿名初始化用户
 - `get_daily_revenue`：每日收入 RPC
 - `adjust_user_credits`：积分加减 RPC
 - `increment_usage_limit`：每日检测次数原子递增 RPC
@@ -189,7 +189,7 @@ Authorization: Bearer <ADMIN_API_KEY>
 x-admin-key: <ADMIN_API_KEY>
 ```
 
-前端用户 API 使用 `anon_user_id` Cookie。首次调用 `/api/site/session` 时会自动创建匿名用户并写入 Cookie。
+前端用户 API 使用 `anon_user_id` Cookie。首次调用 `/api/site/session` 时会自动创建匿名用户并写入 Cookie。前端必须复用同一个匿名身份：所有请求使用 `credentials: 'include'`；如果浏览器环境不能稳定发送 Cookie，就保存 `/api/site/session` 返回的 `anonymousId`，后续请求通过 `x-anonymous-id` 或 body 传回后端。
 
 ## 健康检查
 

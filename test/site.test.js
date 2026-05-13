@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { config } from '../src/config.js';
 
 const {
   normalizeAnonymousId,
@@ -26,6 +27,18 @@ test('serializes anonymous cookie', () => {
   assert.match(cookie, /anon_user_id=user_12345678/);
   assert.match(cookie, /HttpOnly/);
   assert.match(cookie, /Secure/);
+});
+
+test('anonymous cookie can be scoped to configured parent domain', () => {
+  const previousDomain = config.cookieDomain;
+  config.cookieDomain = '.faceshapedetector.store';
+
+  try {
+    const cookie = serializeAnonymousCookie(new Request('https://admin.faceshapedetector.store/api/site/session'), 'user_12345678');
+    assert.match(cookie, /Domain=.faceshapedetector.store/);
+  } finally {
+    config.cookieDomain = previousDomain;
+  }
 });
 
 test('maps public user shape', () => {

@@ -93,7 +93,12 @@ export async function saveSupabaseAuthUser(request, input = {}) {
   if (!profile.email) throw new AppError('Supabase user email is required', 400);
 
   const cookies = parseCookies(request.headers.get('cookie') || '');
-  const anonymousId = normalizeAnonymousId(cookies[config.anonCookieName] || input.anonymousId || input.anonymous_id);
+  const anonymousId = normalizeAnonymousId(
+    cookies[config.anonCookieName] ||
+    input.anonymousId ||
+    input.anonymous_id ||
+    request.headers.get('x-anonymous-id')
+  );
 
   const patch = {
     auth_provider: 'supabase_google',

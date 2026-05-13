@@ -118,6 +118,8 @@ http://localhost:3000
 }
 ```
 
+`totalUsers` 和 `todayUsers` 只统计已识别/已登录用户，不统计匿名初始化用户。
+
 ## 用户和积分
 
 ### `GET /api/admin/users?limit=50&offset=0&search=user@example.com`
