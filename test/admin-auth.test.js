@@ -14,6 +14,7 @@ const {
   verifyAdminSessionToken
 } = await import('../src/auth.js');
 const { default: app } = await import('../api/[...path].js');
+const { default: adminLoginApp } = await import('../api/admin/login.js');
 
 test('validates admin keys', () => {
   assert.equal(isAdminKeyValid('test_admin_key'), true);
@@ -82,6 +83,19 @@ test('allows admin page after login', async () => {
 
 test('allows admin login through rewritten route entry', async () => {
   const response = await app.fetch(new Request('https://example.com/api/route?path=admin/login', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({ adminKey: 'test_admin_key' })
+  }));
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { ok: true });
+});
+
+test('allows admin login through explicit Vercel function entry', async () => {
+  const response = await adminLoginApp.fetch(new Request('https://example.com/api/admin/login', {
     method: 'POST',
     headers: {
       'content-type': 'application/json'
