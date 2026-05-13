@@ -34,12 +34,6 @@ const nodes = {
 let blogs = [];
 let users = [];
 
-function adminHeaders() {
-  return {
-    'content-type': 'application/json'
-  };
-}
-
 async function readJsonResponse(response, fallbackMessage) {
   const payload = await response.json().catch(() => ({}));
 
@@ -53,6 +47,28 @@ async function readJsonResponse(response, fallbackMessage) {
   }
 
   return payload;
+}
+
+async function adminRequest(path, { method = 'GET', body, fallbackMessage = 'Request failed' } = {}) {
+  const response = await fetch(path, {
+    method,
+    credentials: 'same-origin',
+    headers: body == null ? {} : { 'content-type': 'application/json' },
+    body: body == null ? undefined : JSON.stringify(body)
+  });
+
+  return readJsonResponse(response, fallbackMessage);
+}
+
+async function requireAdminSession() {
+  const payload = await adminRequest('/api/admin/session', {
+    fallbackMessage: 'Admin session check failed'
+  });
+
+  if (!payload.authenticated) {
+    window.location.href = '/admin/login';
+    throw new Error('Unauthorized');
+  }
 }
 
 function setStatus(message, isError = false) {
@@ -169,7 +185,12 @@ function renderBlogs() {
       </td>
       <td><span class="tag ${escapeHtml(blog.status)}">${escapeHtml(blog.status)}</span></td>
       <td>${published}</td>
-      <td><button type="button" class="smallButton" data-edit="${blog.id}">Edit</button></td>
+      <td>
+        <div class="rowActions">
+          <button type="button" class="smallButton" data-edit="${blog.id}">Edit</button>
+          <button type="button" class="smallButton danger" data-delete="${blog.id}">Delete</button>
+        </div>
+      </td>
     `;
     blogRows.appendChild(tr);
   }
@@ -208,11 +229,9 @@ function renderUsers() {
 }
 
 async function loadMetrics() {
-  const response = await fetch(`/api/admin/metrics?days=${encodeURIComponent(daysInput.value)}`, {
-    credentials: 'same-origin',
-    headers: adminHeaders()
+  const payload = await adminRequest(`/api/admin/metrics?days=${encodeURIComponent(daysInput.value)}`, {
+    fallbackMessage: 'Metrics load failed'
   });
-  const payload = await readJsonResponse(response, 'Metrics load failed');
 
   const { metrics, dailyRevenue } = payload;
   nodes.totalUsers.textContent = number(metrics.totalUsers);
@@ -227,11 +246,9 @@ async function loadMetrics() {
 }
 
 async function loadBlogs() {
-  const response = await fetch('/api/admin/blogs?limit=50', {
-    credentials: 'same-origin',
-    headers: adminHeaders()
+  const payload = await adminRequest('/api/admin/blogs?limit=50', {
+    fallbackMessage: 'Blog load failed'
   });
-  const payload = await readJsonResponse(response, 'Blog load failed');
 
   blogs = payload.blogs || [];
   renderBlogs();
@@ -239,11 +256,9 @@ async function loadBlogs() {
 
 async function loadUsers() {
   const search = nodes.userSearch.value.trim();
-  const response = await fetch(`/api/admin/users?limit=50&search=${encodeURIComponent(search)}`, {
-    credentials: 'same-origin',
-    headers: adminHeaders()
+  const payload = await adminRequest(`/api/admin/users?limit=50&search=${encodeURIComponent(search)}`, {
+    fallbackMessage: 'Users load failed'
   });
-  const payload = await readJsonResponse(response, 'Users load failed');
 
   users = payload.users || [];
   renderUsers();
@@ -267,33 +282,49 @@ async function saveBlog() {
     content: nodes.blogContent.value
   };
 
-  const response = await fetch(id ? `/api/admin/blogs/${encodeURIComponent(id)}` : '/api/admin/blogs', {
+  await adminRequest(id ? `/api/admin/blogs/${encodeURIComponent(id)}` : '/api/admin/blogs', {
     method: id ? 'PATCH' : 'POST',
-    credentials: 'same-origin',
-    headers: adminHeaders(),
-    body: JSON.stringify(body)
+    body,
+    fallbackMessage: 'Blog save failed'
   });
-  await readJsonResponse(response, 'Blog save failed');
 
   resetBlogForm();
   await loadBlogs();
   setStatus('Blog saved');
 }
 
+async function deleteBlog(blogId) {
+  await adminRequest(`/api/admin/blogs/${encodeURIComponent(blogId)}`, {
+    method: 'DELETE',
+    fallbackMessage: 'Blog delete failed'
+  });
+
+  if (nodes.blogId.value === blogId) resetBlogForm();
+  await loadBlogs();
+  setStatus('Blog deleted');
+}
+
 async function adjustCredits(userId, action, amount) {
-  const response = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/credits/${action}`, {
+  const payload = await adminRequest(`/api/admin/users/${encodeURIComponent(userId)}/credits/${action}`, {
     method: 'POST',
-    credentials: 'same-origin',
-    headers: adminHeaders(),
-    body: JSON.stringify({
+    body: {
       amount,
       reason: 'Admin adjustment'
-    })
+    },
+    fallbackMessage: 'Credit adjustment failed'
   });
-  const payload = await readJsonResponse(response, 'Credit adjustment failed');
 
   await loadUsers();
   setStatus(`Credits updated: ${number(payload.credits.creditsBalance)}`);
+}
+
+async function initAdmin() {
+  try {
+    await requireAdminSession();
+    await refreshAll();
+  } catch (error) {
+    setStatus(error.message, true);
+  }
 }
 
 form.addEventListener('submit', async (event) => {
@@ -314,11 +345,26 @@ blogForm.addEventListener('submit', async (event) => {
   }
 });
 
-blogRows.addEventListener('click', (event) => {
-  const button = event.target.closest('[data-edit]');
-  if (!button) return;
-  const blog = blogs.find((item) => item.id === button.dataset.edit);
-  if (blog) fillBlogForm(blog);
+blogRows.addEventListener('click', async (event) => {
+  const editButton = event.target.closest('[data-edit]');
+  if (editButton) {
+    const blog = blogs.find((item) => item.id === editButton.dataset.edit);
+    if (blog) fillBlogForm(blog);
+    return;
+  }
+
+  const deleteButton = event.target.closest('[data-delete]');
+  if (!deleteButton) return;
+
+  const blog = blogs.find((item) => item.id === deleteButton.dataset.delete);
+  const label = blog?.title || deleteButton.dataset.delete;
+  if (!window.confirm(`Delete "${label}"?`)) return;
+
+  try {
+    await deleteBlog(deleteButton.dataset.delete);
+  } catch (error) {
+    setStatus(error.message, true);
+  }
 });
 
 userRows.addEventListener('click', async (event) => {
@@ -345,9 +391,9 @@ reloadUsersButton.addEventListener('click', () => {
   loadUsers().catch((error) => setStatus(error.message, true));
 });
 logoutButton.addEventListener('click', async () => {
-  await fetch('/api/admin/logout', {
+  await adminRequest('/api/admin/logout', {
     method: 'POST',
-    credentials: 'same-origin'
+    fallbackMessage: 'Logout failed'
   });
   window.location.href = '/admin/login';
 });
@@ -360,4 +406,4 @@ nodes.blogTitle.addEventListener('input', () => {
   if (!nodes.blogId.value) nodes.blogSlug.value = slugify(nodes.blogTitle.value);
 });
 
-refreshAll().catch((error) => setStatus(error.message, true));
+initAdmin();

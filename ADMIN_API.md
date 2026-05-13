@@ -227,7 +227,8 @@ https://admin.faceshapedetector.store/api/creem/webhook
 1. 打开 `/admin`
 2. 跳转 `/admin/login`
 3. 输入 `ADMIN_API_KEY`
-4. 页面直接请求 `metrics`、`users`、`blogs`
+4. 页面先请求 `/api/admin/session` 校验登录态
+5. 页面直接请求 `metrics`、`users`、`blogs`，并已接入 Blog 新增/编辑/删除、用户积分增加/扣减
 
 ### 服务端脚本
 
@@ -235,4 +236,3 @@ https://admin.faceshapedetector.store/api/creem/webhook
 curl "https://admin.faceshapedetector.store/api/admin/metrics?days=30" \
   -H "x-admin-key: <ADMIN_API_KEY>"
 ```
-

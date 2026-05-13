@@ -166,6 +166,16 @@ button.secondary:hover {
   background: #e6f3f1;
 }
 
+button.danger {
+  border-color: var(--danger);
+  background: #fff;
+  color: var(--danger);
+}
+
+button.danger:hover {
+  background: #fef3f2;
+}
+
 .smallButton {
   height: 34px;
   padding: 0 12px;
@@ -373,6 +383,13 @@ th:nth-child(3) {
   height: 34px;
 }
 
+.rowActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
 .rowHint {
   display: block;
   margin-top: 4px;
@@ -462,6 +479,10 @@ th:nth-child(3) {
 
   .creditTools input {
     width: 100%;
+  }
+
+  .rowActions {
+    flex-direction: column;
   }
 
   .chart {

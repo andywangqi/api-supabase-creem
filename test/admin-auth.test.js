@@ -80,6 +80,27 @@ test('allows admin page after login', async () => {
   assert.equal(response.status, 200);
 });
 
+test('reports admin session state', async () => {
+  const anonymous = await app.fetch(new Request('https://example.com/api/admin/session'));
+  assert.deepEqual(await anonymous.json(), { authenticated: false });
+
+  const login = await app.fetch(new Request('https://example.com/api/admin/login', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({ adminKey: 'test_admin_key' })
+  }));
+  const cookie = login.headers.get('set-cookie');
+  const authenticated = await app.fetch(new Request('https://example.com/api/admin/session', {
+    headers: {
+      cookie
+    }
+  }));
+
+  assert.deepEqual(await authenticated.json(), { authenticated: true });
+});
+
 test('blocks direct admin html access', async () => {
   const response = await app.fetch(new Request('https://example.com/admin.html'));
   assert.equal(response.status, 404);
