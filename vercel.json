@@ -2,23 +2,23 @@
   "rewrites": [
     {
       "source": "/",
-      "destination": "/api/admin-page"
+      "destination": "/api/route?path=admin-page"
     },
     {
       "source": "/admin",
-      "destination": "/api/admin-page"
+      "destination": "/api/route?path=admin-page"
     },
     {
       "source": "/admin.html",
-      "destination": "/api/admin-page"
+      "destination": "/api/route?path=admin-page"
     },
     {
       "source": "/admin/login",
-      "destination": "/api/admin-login-page"
+      "destination": "/api/route?path=admin-login-page"
     },
     {
       "source": "/admin/login.html",
-      "destination": "/api/admin-login-page"
+      "destination": "/api/route?path=admin-login-page"
     },
     {
       "source": "/api/:path*",
@@ -30,7 +30,7 @@
     },
     {
       "source": "/health",
-      "destination": "/api/health"
+      "destination": "/api/route?path=health"
     }
   ]
 }

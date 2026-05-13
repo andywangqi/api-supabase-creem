@@ -59,6 +59,18 @@ test('requires login for admin page', async () => {
   assert.equal(response.headers.get('location'), '/admin/login');
 });
 
+test('allows admin page through rewritten route entry', async () => {
+  const response = await app.fetch(new Request('https://example.com/api/route?path=admin-page'));
+  assert.equal(response.status, 302);
+  assert.equal(response.headers.get('location'), '/admin/login');
+});
+
+test('allows admin login page through rewritten route entry', async () => {
+  const response = await app.fetch(new Request('https://example.com/api/route?path=admin-login-page'));
+  assert.equal(response.status, 200);
+  assert.match(await response.text(), /id="loginForm"/);
+});
+
 test('allows admin page after login', async () => {
   const login = await app.fetch(new Request('https://example.com/api/admin/login', {
     method: 'POST',
@@ -131,6 +143,18 @@ test('reports admin session state', async () => {
   }));
 
   assert.deepEqual(await authenticated.json(), { authenticated: true });
+});
+
+test('reports admin session through rewritten route entry', async () => {
+  const response = await app.fetch(new Request('https://example.com/api/route?path=admin/session'));
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { authenticated: false });
+});
+
+test('serves health through rewritten route entry', async () => {
+  const response = await app.fetch(new Request('https://example.com/api/route?path=health'));
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).ok, true);
 });
 
 test('blocks direct admin html access', async () => {
