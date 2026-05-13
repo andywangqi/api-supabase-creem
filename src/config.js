@@ -1,10 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-function loadEnvFile() {
-  const envPath = resolve(process.cwd(), '.env');
+function loadEnvFile(envPath) {
   if (!existsSync(envPath)) return;
-
   const lines = readFileSync(envPath, 'utf8').split(/\r?\n/);
   for (const line of lines) {
     const trimmed = line.trim();
@@ -25,7 +23,8 @@ function loadEnvFile() {
   }
 }
 
-loadEnvFile();
+loadEnvFile(resolve(process.cwd(), '.env'));
+loadEnvFile(resolve(process.cwd(), '.env.example'));
 
 function boolEnv(value, fallback = false) {
   if (value == null || value === '') return fallback;
