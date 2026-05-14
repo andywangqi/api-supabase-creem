@@ -138,6 +138,17 @@
             <span>Excerpt</span>
             <textarea id="blogExcerpt" name="excerpt" rows="3" placeholder="Short summary"></textarea>
           </label>
+          <div class="blogImageTools wide">
+            <label>
+              <span>Content image URL</span>
+              <input id="blogImageUrl" type="url" placeholder="https://example.com/image.jpg">
+            </label>
+            <label>
+              <span>Image alt</span>
+              <input id="blogImageAlt" type="text" placeholder="Image description">
+            </label>
+            <button type="button" id="insertBlogImage" class="secondary">Insert image</button>
+          </div>
           <label class="wide">
             <span>Content</span>
             <textarea id="blogContent" name="content" rows="12" required placeholder="Write the blog content here"></textarea>

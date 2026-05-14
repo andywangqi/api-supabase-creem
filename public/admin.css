@@ -365,6 +365,17 @@ th:nth-child(3) {
   grid-column: 1 / -1;
 }
 
+.blogImageTools {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(180px, 1fr) auto;
+  align-items: end;
+  gap: 14px;
+}
+
+.blogImageTools button {
+  white-space: nowrap;
+}
+
 .formActions {
   display: flex;
   gap: 10px;
@@ -430,6 +441,10 @@ th:nth-child(3) {
 
   .blogForm {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .blogImageTools {
+    grid-template-columns: 1fr;
   }
 
   .splitHead {

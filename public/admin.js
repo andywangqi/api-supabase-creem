@@ -7,6 +7,7 @@ const blogForm = document.querySelector('#blogForm');
 const blogRows = document.querySelector('#blogRows');
 const resetBlogButton = document.querySelector('#resetBlog');
 const reloadBlogsButton = document.querySelector('#reloadBlogs');
+const insertBlogImageButton = document.querySelector('#insertBlogImage');
 const userRows = document.querySelector('#userRows');
 const userSearchForm = document.querySelector('#userSearchForm');
 const reloadUsersButton = document.querySelector('#reloadUsers');
@@ -26,6 +27,8 @@ const nodes = {
   blogAuthor: document.querySelector('#blogAuthor'),
   blogStatus: document.querySelector('#blogStatus'),
   blogCover: document.querySelector('#blogCover'),
+  blogImageUrl: document.querySelector('#blogImageUrl'),
+  blogImageAlt: document.querySelector('#blogImageAlt'),
   blogExcerpt: document.querySelector('#blogExcerpt'),
   blogContent: document.querySelector('#blogContent'),
   userSearch: document.querySelector('#userSearch')
@@ -181,6 +184,42 @@ function fillBlogForm(blog) {
   nodes.blogExcerpt.value = blog.excerpt || '';
   nodes.blogContent.value = blog.content || '';
   window.scrollTo({ top: blogForm.offsetTop - 24, behavior: 'smooth' });
+}
+
+function formatBlogImageMarkdown(url, alt) {
+  const cleanUrl = String(url || '').trim();
+  if (!cleanUrl) return '';
+
+  const cleanAlt = String(alt || 'Blog image')
+    .replace(/[\[\]\r\n]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return `![${cleanAlt || 'Blog image'}](${cleanUrl})`;
+}
+
+function insertBlogImage() {
+  const snippet = formatBlogImageMarkdown(nodes.blogImageUrl.value, nodes.blogImageAlt.value);
+  if (!snippet) {
+    setStatus('Image URL is required', true);
+    nodes.blogImageUrl.focus();
+    return;
+  }
+
+  const textarea = nodes.blogContent;
+  const start = textarea.selectionStart ?? textarea.value.length;
+  const end = textarea.selectionEnd ?? textarea.value.length;
+  const before = textarea.value.slice(0, start);
+  const after = textarea.value.slice(end);
+  const prefix = before && !before.endsWith('\n') ? '\n\n' : '';
+  const suffix = after && !after.startsWith('\n') ? '\n\n' : '';
+
+  textarea.value = `${before}${prefix}${snippet}${suffix}${after}`;
+  const cursor = before.length + prefix.length + snippet.length;
+  textarea.focus();
+  textarea.setSelectionRange(cursor, cursor);
+  nodes.blogImageUrl.value = '';
+  nodes.blogImageAlt.value = '';
+  setStatus('Image inserted');
 }
 
 function renderBlogs() {
@@ -403,6 +442,7 @@ userRows.addEventListener('click', async (event) => {
 });
 
 resetBlogButton.addEventListener('click', resetBlogForm);
+insertBlogImageButton.addEventListener('click', insertBlogImage);
 reloadBlogsButton.addEventListener('click', () => {
   loadBlogs().catch((error) => setStatus(error.message, true));
 });
