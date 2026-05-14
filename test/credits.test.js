@@ -31,9 +31,30 @@ test('maps public user credit shape', () => {
     email: 'a@example.com',
     anonymousId: 'anon1',
     name: 'A',
+    displayName: 'A',
     isAnonymous: false,
     creditsBalance: 88,
     createdAt: '2026-05-10T00:00:00Z',
     lastSeenAt: '2026-05-10T01:00:00Z'
   });
+});
+
+test('uses anonymous id as admin display name for anonymous users', () => {
+  assert.equal(toPublicUserCredit({
+    id: 'u2',
+    anonymous_id: 'anon_12345678',
+    is_anonymous: true,
+    credits_balance: 0
+  }).displayName, 'anon_12345678');
+});
+
+test('uses nickname as admin display name for registered users', () => {
+  assert.equal(toPublicUserCredit({
+    id: 'u3',
+    email: 'user@example.com',
+    anonymous_id: 'anon_12345678',
+    name: 'Real Nickname',
+    is_anonymous: false,
+    credits_balance: 0
+  }).displayName, 'Real Nickname');
 });

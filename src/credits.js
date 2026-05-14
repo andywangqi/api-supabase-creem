@@ -24,12 +24,18 @@ export function normalizeCreditAmount(value) {
 
 export function toPublicUserCredit(row) {
   if (!row) return null;
+  const isAnonymous = Boolean(row.is_anonymous);
+  const displayName = isAnonymous
+    ? row.anonymous_id || row.id
+    : row.name || row.email || row.anonymous_id || row.id;
+
   return {
     userId: row.id,
     email: row.email || null,
     anonymousId: row.anonymous_id || null,
     name: row.name || null,
-    isAnonymous: Boolean(row.is_anonymous),
+    displayName,
+    isAnonymous,
     creditsBalance: Number(row.credits_balance || 0),
     createdAt: row.created_at,
     lastSeenAt: row.last_seen_at

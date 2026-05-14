@@ -136,6 +136,7 @@ http://localhost:3000
       "email": "user@example.com",
       "anonymousId": "uuid",
       "name": "User Name",
+      "displayName": "User Name",
       "isAnonymous": false,
       "creditsBalance": 100,
       "createdAt": "2026-05-13T00:00:00.000Z",

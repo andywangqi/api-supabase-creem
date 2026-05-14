@@ -226,7 +226,7 @@ function renderUsers() {
   }
 
   for (const user of users) {
-    const label = user.email || user.name || user.anonymousId || user.userId;
+    const label = user.displayName || (user.isAnonymous ? user.anonymousId : user.name) || user.email || user.userId;
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>
