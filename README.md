@@ -92,7 +92,7 @@ sql/schema.sql
 
 会创建：
 
-- `app_users`：用户表，包含匿名用户、邮箱用户、积分余额
+- `app_users`：用户表，包含匿名用户、邮箱用户、积分余额、最近 IP 和国家
 - `payments`：支付入账表
 - `credit_transactions`：积分流水表
 - `blog_posts`：Blog 表
@@ -456,6 +456,8 @@ x-admin-key: <ADMIN_API_KEY>
       "name": "User Name",
       "isAnonymous": false,
       "creditsBalance": 100,
+      "lastIp": "203.0.113.10",
+      "lastCountry": "US",
       "createdAt": "2026-05-10T00:00:00.000Z",
       "lastSeenAt": "2026-05-10T01:00:00.000Z"
     }

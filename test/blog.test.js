@@ -27,3 +27,15 @@ test('admin blog editor supports inserting content image URLs', () => {
   assert.match(script, /insertBlogImageButton\.addEventListener\('click', insertBlogImage\)/);
   assert.match(styles, /\.blogImageTools/);
 });
+
+test('admin user list displays ip and country', () => {
+  const html = readFileSync(new URL('../src/views/admin.html', import.meta.url), 'utf8');
+  const script = readFileSync(new URL('../public/admin.js', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('../public/admin.css', import.meta.url), 'utf8');
+
+  assert.match(html, /<th>IP<\/th>/);
+  assert.match(html, /<th>Country<\/th>/);
+  assert.match(script, /user\.lastIp/);
+  assert.match(script, /function countryLabel/);
+  assert.match(styles, /\.userTable/);
+});

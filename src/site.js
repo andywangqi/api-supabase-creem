@@ -10,6 +10,20 @@ import {
 } from './supabase.js';
 
 const ANONYMOUS_ID_PATTERN = /^[a-zA-Z0-9_-]{8,128}$/;
+const IP_HEADER_NAMES = [
+  'x-forwarded-for',
+  'x-real-ip',
+  'x-client-ip',
+  'cf-connecting-ip',
+  'x-vercel-forwarded-for',
+  'forwarded'
+];
+const COUNTRY_HEADER_NAMES = [
+  'x-vercel-ip-country',
+  'cf-ipcountry',
+  'cloudfront-viewer-country',
+  'x-country-code'
+];
 
 function headerValue(request, name) {
   return request.headers.get(name) || '';
@@ -40,6 +54,52 @@ export function normalizeAnonymousId(value) {
   if (!value) return '';
   const normalized = String(value).trim();
   return ANONYMOUS_ID_PATTERN.test(normalized) ? normalized : '';
+}
+
+export function normalizeClientIp(value) {
+  if (!value) return '';
+
+  let ip = String(value)
+    .split(',')
+    .map((part) => part.trim())
+    .find((part) => part && part.toLowerCase() !== 'unknown') || '';
+
+  ip = ip.replace(/^for=/i, '').trim().replace(/^"|"$/g, '');
+
+  const semicolonIndex = ip.indexOf(';');
+  if (semicolonIndex !== -1) ip = ip.slice(0, semicolonIndex).trim().replace(/^"|"$/g, '');
+
+  if (ip.startsWith('[')) {
+    const bracketIndex = ip.indexOf(']');
+    if (bracketIndex !== -1) ip = ip.slice(1, bracketIndex);
+  } else if (/^\d{1,3}(?:\.\d{1,3}){3}:\d+$/.test(ip)) {
+    ip = ip.replace(/:\d+$/, '');
+  }
+
+  return /^[a-zA-Z0-9:._-]{3,64}$/.test(ip) ? ip : '';
+}
+
+export function normalizeCountry(value) {
+  const country = String(value || '').trim().toUpperCase();
+  return /^[A-Z]{2}$/.test(country) && country !== 'XX' ? country : '';
+}
+
+function firstRequestHeader(request, names) {
+  for (const name of names) {
+    const value = headerValue(request, name);
+    if (value) return value;
+  }
+  return '';
+}
+
+export function clientLocationFromRequest(request) {
+  const lastIp = normalizeClientIp(firstRequestHeader(request, IP_HEADER_NAMES));
+  const lastCountry = normalizeCountry(firstRequestHeader(request, COUNTRY_HEADER_NAMES));
+
+  return {
+    ...(lastIp ? { last_ip: lastIp } : {}),
+    ...(lastCountry ? { last_country: lastCountry } : {})
+  };
 }
 
 function normalizeEmail(value) {
@@ -87,7 +147,7 @@ export function serializeAnonymousCookie(request, anonymousId) {
   return parts.join('; ');
 }
 
-async function identifyUser(input, anonymousId) {
+async function identifyUser(input, anonymousId, clientLocation = {}) {
   const email = normalizeEmail(input.email);
   const externalId = input.userId || input.user_id || input.externalId || input.external_id || '';
 
@@ -96,6 +156,7 @@ async function identifyUser(input, anonymousId) {
   const existingEmailUser = await findUserByEmail(email);
   if (existingEmailUser) {
     return updateUserById(existingEmailUser.id, {
+      ...clientLocation,
       ...(externalId ? { external_id: externalId } : {}),
       ...(input.name ? { name: input.name } : {}),
       is_anonymous: false,
@@ -109,6 +170,7 @@ async function identifyUser(input, anonymousId) {
   const existingAnonymousUser = anonymousId ? await findUserByAnonymousId(anonymousId) : null;
   if (existingAnonymousUser) {
     return updateUserById(existingAnonymousUser.id, {
+      ...clientLocation,
       ...(externalId ? { external_id: externalId } : {}),
       email,
       ...(input.name ? { name: input.name } : {}),
@@ -126,11 +188,14 @@ async function identifyUser(input, anonymousId) {
     email,
     name: input.name,
     isAnonymous: false,
+    lastIp: clientLocation.last_ip,
+    lastCountry: clientLocation.last_country,
     metadata: metadataFrom(input, 'site_identify')
   });
 }
 
 export async function getOrCreateSiteSession(request, input = {}) {
+  const clientLocation = clientLocationFromRequest(request);
   const cookies = parseCookies(headerValue(request, 'cookie'));
   const incomingAnonymousId = normalizeAnonymousId(
     input.anonymousId ||
@@ -140,17 +205,19 @@ export async function getOrCreateSiteSession(request, input = {}) {
   );
   const anonymousId = incomingAnonymousId || randomUUID();
 
-  let user = await identifyUser(input, anonymousId);
+  let user = await identifyUser(input, anonymousId, clientLocation);
   let created = false;
 
   if (!user) {
     user = incomingAnonymousId ? await findUserByAnonymousId(incomingAnonymousId) : null;
     if (user) {
-      user = await touchUser(user.id);
+      user = await touchUser(user.id, clientLocation);
     } else {
       created = true;
       user = await upsertAnonymousUser({
         anonymousId,
+        lastIp: clientLocation.last_ip,
+        lastCountry: clientLocation.last_country,
         metadata: metadataFrom(input, 'anonymous_session')
       });
     }

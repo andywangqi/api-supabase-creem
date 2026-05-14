@@ -37,13 +37,15 @@ export function toPublicUserCredit(row) {
     displayName,
     isAnonymous,
     creditsBalance: Number(row.credits_balance || 0),
+    lastIp: row.last_ip || null,
+    lastCountry: row.last_country || null,
     createdAt: row.created_at,
     lastSeenAt: row.last_seen_at
   };
 }
 
 function userSelect() {
-  return 'id,email,anonymous_id,name,is_anonymous,credits_balance,created_at,last_seen_at';
+  return 'id,email,anonymous_id,name,is_anonymous,credits_balance,last_ip,last_country,created_at,last_seen_at';
 }
 
 export async function findUserById(id) {
@@ -62,7 +64,7 @@ export async function listAdminUsers({ limit, offset, search } = {}) {
   const cleanSearch = String(search || '').trim();
   if (cleanSearch) {
     const pattern = `*${cleanSearch.replace(/[(),]/g, ' ')}*`;
-    path += `&or=(email.ilike.${encodeURIComponent(pattern)},anonymous_id.ilike.${encodeURIComponent(pattern)},name.ilike.${encodeURIComponent(pattern)})`;
+    path += `&or=(email.ilike.${encodeURIComponent(pattern)},anonymous_id.ilike.${encodeURIComponent(pattern)},name.ilike.${encodeURIComponent(pattern)},last_ip.ilike.${encodeURIComponent(pattern)},last_country.ilike.${encodeURIComponent(pattern)})`;
   }
 
   const rows = await supabaseFetch(path);

@@ -326,6 +326,20 @@ th:nth-child(3) {
   text-align: right;
 }
 
+.userTable td:nth-child(2),
+.userTable td:nth-child(3),
+.userTable th:nth-child(2),
+.userTable th:nth-child(3) {
+  text-align: left;
+}
+
+.userTable td:nth-child(4),
+.userTable td:nth-child(5),
+.userTable th:nth-child(4),
+.userTable th:nth-child(5) {
+  text-align: right;
+}
+
 .status {
   min-height: 24px;
   margin-top: 14px;

@@ -77,21 +77,23 @@
         <div class="panelHead splitHead">
           <div>
             <h2>Users</h2>
-            <p>Registration time and remaining credits.</p>
+            <p>Registration time, IP, country and remaining credits.</p>
           </div>
           <form id="userSearchForm" class="inlineTools">
-            <input id="userSearch" type="search" placeholder="Search email, name, anonymous id">
+            <input id="userSearch" type="search" placeholder="Search email, name, anonymous id, IP, country">
             <button type="submit" class="secondary">Search</button>
             <button type="button" id="reloadUsers" class="secondary">Reload</button>
           </form>
         </div>
         <div class="tableWrap">
-          <table>
+          <table class="userTable">
             <thead>
               <tr>
                 <th>User</th>
+                <th>IP</th>
+                <th>Country</th>
                 <th>Registered</th>
-                <th>Remaining credits</th>
+                <th>Credits</th>
                 <th>Adjust</th>
               </tr>
             </thead>

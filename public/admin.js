@@ -139,6 +139,23 @@ function dateTime(value) {
   return value ? new Date(value).toLocaleString('en-US') : '-';
 }
 
+function countryLabel(value) {
+  const code = String(value || '').trim().toUpperCase();
+  if (!code) return '-';
+
+  try {
+    if (typeof Intl.DisplayNames === 'function') {
+      const names = new Intl.DisplayNames(['en'], { type: 'region' });
+      const name = names.of(code);
+      if (name && name !== code) return `${name} (${code})`;
+    }
+  } catch {
+    // Fall back to the stored country code.
+  }
+
+  return code;
+}
+
 function renderChart(items, currency) {
   chart.innerHTML = '';
   chart.style.setProperty('--bars', Math.max(items.length, 1));
@@ -259,7 +276,7 @@ function renderUsers() {
 
   if (!users.length) {
     const empty = document.createElement('tr');
-    empty.innerHTML = '<td colspan="4">No users</td>';
+    empty.innerHTML = '<td colspan="6">No users</td>';
     userRows.appendChild(empty);
     return;
   }
@@ -270,8 +287,10 @@ function renderUsers() {
     tr.innerHTML = `
       <td>
         <strong>${escapeHtml(label)}</strong>
-        <span class="rowHint">${user.isAnonymous ? 'Anonymous' : 'Registered'} · ${escapeHtml(shortId(user.userId))}</span>
+        <span class="rowHint">${user.isAnonymous ? 'Anonymous' : 'Registered'} - ${escapeHtml(shortId(user.userId))}</span>
       </td>
+      <td>${escapeHtml(user.lastIp || '-')}</td>
+      <td>${escapeHtml(countryLabel(user.lastCountry))}</td>
       <td>${dateTime(user.createdAt)}</td>
       <td><strong>${number(user.creditsBalance)}</strong></td>
       <td>

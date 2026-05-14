@@ -34,7 +34,7 @@ import {
 import { getAdminMetrics } from './metrics.js';
 import { createTryOnGeneration } from './generations.js';
 import { createFaceReport, getFaceReportForUser, ensureReportOwnedByUser, reportAccess } from './reports.js';
-import { getOrCreateSiteSession } from './site.js';
+import { clientLocationFromRequest, getOrCreateSiteSession } from './site.js';
 import { getActiveSubscription } from './subscriptions.js';
 import { detectAllowanceForUser } from './usage.js';
 import { missing } from './config.js';
@@ -456,11 +456,14 @@ async function route(request) {
 
   if (request.method === 'POST' && pathname === '/api/users') {
     const body = await readJson(request);
+    const clientLocation = clientLocationFromRequest(request);
     const user = await upsertUser({
       id: body.id || body.userId,
       email: body.email,
       name: body.name,
       creemCustomerId: body.creemCustomerId || body.creem_customer_id,
+      lastIp: clientLocation.last_ip,
+      lastCountry: clientLocation.last_country,
       metadata: body.metadata || {}
     });
     return jsonResponse(request, 201, { user });

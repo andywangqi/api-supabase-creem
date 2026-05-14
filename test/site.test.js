@@ -3,7 +3,10 @@ import test from 'node:test';
 import { config } from '../src/config.js';
 
 const {
+  clientLocationFromRequest,
   normalizeAnonymousId,
+  normalizeClientIp,
+  normalizeCountry,
   parseCookies,
   serializeAnonymousCookie,
   toPublicUser
@@ -19,6 +22,27 @@ test('parses cookies', () => {
 test('normalizes anonymous ids', () => {
   assert.equal(normalizeAnonymousId('user_12345678'), 'user_12345678');
   assert.equal(normalizeAnonymousId('../bad'), '');
+});
+
+test('normalizes client ip and country headers', () => {
+  assert.equal(normalizeClientIp('203.0.113.10, 10.0.0.1'), '203.0.113.10');
+  assert.equal(normalizeClientIp('for="[2001:db8::1]:443";proto=https'), '2001:db8::1');
+  assert.equal(normalizeCountry('us'), 'US');
+  assert.equal(normalizeCountry('XX'), '');
+});
+
+test('extracts client location from request headers', () => {
+  const request = new Request('https://example.com/api/site/session', {
+    headers: {
+      'x-forwarded-for': '198.51.100.20, 10.0.0.1',
+      'x-vercel-ip-country': 'ca'
+    }
+  });
+
+  assert.deepEqual(clientLocationFromRequest(request), {
+    last_ip: '198.51.100.20',
+    last_country: 'CA'
+  });
 });
 
 test('serializes anonymous cookie', () => {

@@ -139,6 +139,8 @@ http://localhost:3000
       "displayName": "User Name",
       "isAnonymous": false,
       "creditsBalance": 100,
+      "lastIp": "203.0.113.10",
+      "lastCountry": "US",
       "createdAt": "2026-05-13T00:00:00.000Z",
       "lastSeenAt": "2026-05-13T00:00:00.000Z"
     }

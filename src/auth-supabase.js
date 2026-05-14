@@ -1,6 +1,12 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { config } from './config.js';
-import { parseCookies, normalizeAnonymousId, toPublicUser, getOrCreateSiteSession } from './site.js';
+import {
+  clientLocationFromRequest,
+  parseCookies,
+  normalizeAnonymousId,
+  toPublicUser,
+  getOrCreateSiteSession
+} from './site.js';
 import {
   AppError,
   findUserByAnonymousId,
@@ -99,8 +105,10 @@ export async function saveSupabaseAuthUser(request, input = {}) {
     input.anonymous_id ||
     request.headers.get('x-anonymous-id')
   );
+  const clientLocation = clientLocationFromRequest(request);
 
   const patch = {
+    ...clientLocation,
     auth_provider: 'supabase_google',
     auth_provider_user_id: profile.authProviderUserId,
     email: profile.email.toLowerCase(),

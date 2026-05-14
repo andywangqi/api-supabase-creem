@@ -106,11 +106,14 @@ export async function updateUserById(id, patch) {
   return rowOrFirst(rows);
 }
 
-export async function touchUser(id) {
-  return updateUserById(id, { last_seen_at: nowIso() });
+export async function touchUser(id, patch = {}) {
+  return updateUserById(id, {
+    ...patch,
+    last_seen_at: nowIso()
+  });
 }
 
-export async function upsertAnonymousUser({ anonymousId, metadata = {} }) {
+export async function upsertAnonymousUser({ anonymousId, metadata = {}, lastIp, lastCountry }) {
   if (!anonymousId) {
     throw new AppError('anonymousId is required', 400);
   }
@@ -122,6 +125,8 @@ export async function upsertAnonymousUser({ anonymousId, metadata = {} }) {
       anonymous_id: anonymousId,
       is_anonymous: true,
       metadata,
+      ...(lastIp ? { last_ip: lastIp } : {}),
+      ...(lastCountry ? { last_country: lastCountry } : {}),
       last_seen_at: nowIso()
     }
   });
@@ -129,7 +134,17 @@ export async function upsertAnonymousUser({ anonymousId, metadata = {} }) {
   return rowOrFirst(rows);
 }
 
-export async function upsertUser({ id, anonymousId, email, name, creemCustomerId, metadata = {}, isAnonymous = false }) {
+export async function upsertUser({
+  id,
+  anonymousId,
+  email,
+  name,
+  creemCustomerId,
+  metadata = {},
+  isAnonymous = false,
+  lastIp,
+  lastCountry
+}) {
   if (!email) {
     throw new AppError('email is required', 400);
   }
@@ -141,6 +156,8 @@ export async function upsertUser({ id, anonymousId, email, name, creemCustomerId
     ...(name ? { name } : {}),
     is_anonymous: isAnonymous,
     ...(creemCustomerId ? { creem_customer_id: creemCustomerId } : {}),
+    ...(lastIp ? { last_ip: lastIp } : {}),
+    ...(lastCountry ? { last_country: lastCountry } : {}),
     metadata,
     last_seen_at: nowIso()
   };

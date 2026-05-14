@@ -24,6 +24,8 @@ test('maps public user credit shape', () => {
     name: 'A',
     is_anonymous: false,
     credits_balance: 88,
+    last_ip: '203.0.113.10',
+    last_country: 'US',
     created_at: '2026-05-10T00:00:00Z',
     last_seen_at: '2026-05-10T01:00:00Z'
   }), {
@@ -34,6 +36,8 @@ test('maps public user credit shape', () => {
     displayName: 'A',
     isAnonymous: false,
     creditsBalance: 88,
+    lastIp: '203.0.113.10',
+    lastCountry: 'US',
     createdAt: '2026-05-10T00:00:00Z',
     lastSeenAt: '2026-05-10T01:00:00Z'
   });

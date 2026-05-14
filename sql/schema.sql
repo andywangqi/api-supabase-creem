@@ -13,6 +13,8 @@ create table if not exists public.app_users (
   credits_balance integer not null default 0,
   creem_customer_id text,
   metadata jsonb not null default '{}'::jsonb,
+  last_ip text,
+  last_country text,
   last_seen_at timestamptz not null default now(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -25,6 +27,8 @@ alter table public.app_users add column if not exists auth_provider text;
 alter table public.app_users add column if not exists auth_provider_user_id text unique;
 alter table public.app_users add column if not exists avatar_url text;
 alter table public.app_users add column if not exists credits_balance integer not null default 0;
+alter table public.app_users add column if not exists last_ip text;
+alter table public.app_users add column if not exists last_country text;
 alter table public.app_users add column if not exists last_seen_at timestamptz not null default now();
 alter table public.app_users alter column email drop not null;
 
@@ -165,6 +169,8 @@ create index if not exists app_users_created_at_idx on public.app_users (created
 create index if not exists app_users_anonymous_id_idx on public.app_users (anonymous_id);
 create index if not exists app_users_auth_provider_user_id_idx on public.app_users (auth_provider_user_id);
 create index if not exists app_users_last_seen_at_idx on public.app_users (last_seen_at);
+create index if not exists app_users_last_ip_idx on public.app_users (last_ip);
+create index if not exists app_users_last_country_idx on public.app_users (last_country);
 create index if not exists app_users_credits_balance_idx on public.app_users (credits_balance);
 create index if not exists payments_paid_at_idx on public.payments (paid_at);
 create index if not exists payments_created_at_idx on public.payments (created_at);
