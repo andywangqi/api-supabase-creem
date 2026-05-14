@@ -68,7 +68,9 @@ test('allows admin page through rewritten route entry', async () => {
 test('allows admin login page through rewritten route entry', async () => {
   const response = await app.fetch(new Request('https://example.com/api/route?path=admin-login-page'));
   assert.equal(response.status, 200);
-  assert.match(await response.text(), /id="loginForm"/);
+  const html = await response.text();
+  assert.match(html, /id="loginForm"/);
+  assert.match(html, /admin-login\.js\?v=20260515-location/);
 });
 
 test('allows admin page after login', async () => {
@@ -91,6 +93,15 @@ test('allows admin page after login', async () => {
   }));
 
   assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /admin\.js\?v=20260515-location/);
+  assert.match(html, /admin\.css\?v=20260515-location/);
+});
+
+test('does not cache admin static assets', async () => {
+  const response = await app.fetch(new Request('https://example.com/admin.js'));
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
 });
 
 test('allows admin login through rewritten route entry', async () => {

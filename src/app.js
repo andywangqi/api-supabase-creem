@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { dirname, join, normalize, resolve, sep } from 'node:path';
+import { basename, dirname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   hasAdminSession,
@@ -152,11 +152,13 @@ async function staticResponse(request, requestPath) {
   try {
     const file = await readFile(filePath);
     const extension = filePath.slice(filePath.lastIndexOf('.'));
+    const fileName = basename(filePath);
+    const isAdminAsset = ['admin.css', 'admin.js', 'admin-login.js'].includes(fileName);
     return response(request, file, {
       status: 200,
       headers: {
         'content-type': mimeTypes.get(extension) || 'application/octet-stream',
-        'cache-control': extension === '.html' ? 'no-store' : 'public, max-age=3600'
+        'cache-control': extension === '.html' || isAdminAsset ? 'no-store' : 'public, max-age=3600'
       }
     });
   } catch (error) {
