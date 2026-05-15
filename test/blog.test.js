@@ -4,7 +4,7 @@ import test from 'node:test';
 
 process.env.CREEM_WEBHOOK_SECRET ||= 'test_secret';
 
-const { slugify, toBlogPostingSchema } = await import('../src/blog.js');
+const { createBlogPost, slugify, toBlogPostingSchema } = await import('../src/blog.js');
 
 test('creates URL-safe blog slugs', () => {
   assert.equal(slugify(' My First Blog Post! '), 'my-first-blog-post');
@@ -67,4 +67,53 @@ test('maps blog posts to BlogPosting schema', () => {
       url: 'https://admin.faceshapedetector.store'
     }
   });
+});
+
+test('creates a new blog instead of overwriting an existing slug', async () => {
+  const calls = [];
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async (url, options = {}) => {
+    const call = {
+      url: String(url),
+      method: options.method || 'GET',
+      body: options.body ? JSON.parse(options.body) : null
+    };
+    calls.push(call);
+
+    if (call.url.includes('/blog_posts?slug=eq.duplicate&select=id,slug&limit=1')) {
+      return Response.json([{ id: 'old-blog', slug: 'duplicate' }]);
+    }
+
+    if (call.url.includes('/blog_posts?slug=eq.duplicate-2&select=id,slug&limit=1')) {
+      return Response.json([]);
+    }
+
+    if (call.url.endsWith('/blog_posts') && call.method === 'POST') {
+      return Response.json([{
+        id: 'new-blog',
+        ...call.body,
+        created_at: '2026-05-15T00:00:00.000Z',
+        updated_at: '2026-05-15T00:00:00.000Z'
+      }]);
+    }
+
+    throw new Error(`Unexpected fetch: ${call.method} ${call.url}`);
+  };
+
+  try {
+    const blog = await createBlogPost({
+      title: 'Duplicate',
+      slug: 'duplicate',
+      content: 'Second post',
+      status: 'published'
+    });
+
+    const post = calls.find((call) => call.method === 'POST');
+    assert.equal(blog.slug, 'duplicate-2');
+    assert.equal(post.body.slug, 'duplicate-2');
+    assert.ok(!post.url.includes('on_conflict=slug'));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

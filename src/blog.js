@@ -141,11 +141,34 @@ function mapRows(rows) {
   return Array.isArray(rows) ? rows.map(toPublicBlog) : [];
 }
 
+async function findBlogBySlug(slug) {
+  if (!slug) return null;
+  const rows = await supabaseFetch(
+    `/blog_posts?slug=eq.${encodeURIComponent(slug)}&select=id,slug&limit=1`
+  );
+  return firstRow(rows);
+}
+
+async function uniqueCreateSlug(slug) {
+  const base = slugify(slug);
+  if (!base) throw new AppError('Blog slug is required', 400);
+
+  for (let index = 0; index < 100; index += 1) {
+    const candidate = index === 0 ? base : slugify(`${base}-${index + 1}`);
+    const existing = await findBlogBySlug(candidate);
+    if (!existing) return candidate;
+  }
+
+  throw new AppError('Blog slug already exists', 409);
+}
+
 export async function createBlogPost(input) {
   const payload = normalizeBlogInput(input);
-  const rows = await supabaseFetch('/blog_posts?on_conflict=slug', {
+  payload.slug = await uniqueCreateSlug(payload.slug);
+
+  const rows = await supabaseFetch('/blog_posts', {
     method: 'POST',
-    prefer: 'resolution=merge-duplicates,return=representation',
+    prefer: 'return=representation',
     body: payload
   });
   return toPublicBlog(firstRow(rows));
