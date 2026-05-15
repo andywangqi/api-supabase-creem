@@ -3,6 +3,7 @@ import { config } from './config.js';
 import {
   findUserByAnonymousId,
   findUserByEmail,
+  mergeAppUsers,
   updateUserById,
   touchUser,
   upsertAnonymousUser,
@@ -153,7 +154,40 @@ async function identifyUser(input, anonymousId, clientLocation = {}) {
 
   if (!email) return null;
 
+  let currentUser = anonymousId ? await findUserByAnonymousId(anonymousId) : null;
+  if (!currentUser && anonymousId) {
+    currentUser = await upsertAnonymousUser({
+      anonymousId,
+      lastIp: clientLocation.last_ip,
+      lastCountry: clientLocation.last_country,
+      useAnonymousIdAsPrimary: true,
+      metadata: metadataFrom(input, 'anonymous_session')
+    });
+  }
+
   const existingEmailUser = await findUserByEmail(email);
+
+  if (currentUser) {
+    if (existingEmailUser && existingEmailUser.id !== currentUser.id) {
+      currentUser = await mergeAppUsers({
+        targetUserId: currentUser.id,
+        sourceUserId: existingEmailUser.id
+      }) || currentUser;
+    }
+
+    return updateUserById(currentUser.id, {
+      ...clientLocation,
+      ...(externalId ? { external_id: externalId } : {}),
+      email,
+      ...(input.name ? { name: input.name } : {}),
+      is_anonymous: false,
+      metadata: {
+        ...(currentUser.metadata || {}),
+        ...metadataFrom(input, 'site_identify')
+      }
+    });
+  }
+
   if (existingEmailUser) {
     return updateUserById(existingEmailUser.id, {
       ...clientLocation,
@@ -162,21 +196,6 @@ async function identifyUser(input, anonymousId, clientLocation = {}) {
       is_anonymous: false,
       metadata: {
         ...(existingEmailUser.metadata || {}),
-        ...metadataFrom(input, 'site_identify')
-      }
-    });
-  }
-
-  const existingAnonymousUser = anonymousId ? await findUserByAnonymousId(anonymousId) : null;
-  if (existingAnonymousUser) {
-    return updateUserById(existingAnonymousUser.id, {
-      ...clientLocation,
-      ...(externalId ? { external_id: externalId } : {}),
-      email,
-      ...(input.name ? { name: input.name } : {}),
-      is_anonymous: false,
-      metadata: {
-        ...(existingAnonymousUser.metadata || {}),
         ...metadataFrom(input, 'site_identify')
       }
     });
@@ -218,6 +237,7 @@ export async function getOrCreateSiteSession(request, input = {}) {
         anonymousId,
         lastIp: clientLocation.last_ip,
         lastCountry: clientLocation.last_country,
+        useAnonymousIdAsPrimary: true,
         metadata: metadataFrom(input, 'anonymous_session')
       });
     }

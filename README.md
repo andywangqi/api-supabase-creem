@@ -189,7 +189,7 @@ Authorization: Bearer <ADMIN_API_KEY>
 x-admin-key: <ADMIN_API_KEY>
 ```
 
-前端用户 API 使用 `anon_user_id` Cookie。首次调用 `/api/site/session` 时会自动创建匿名用户并写入 Cookie。前端必须复用同一个匿名身份：所有请求使用 `credentials: 'include'`；如果浏览器环境不能稳定发送 Cookie，就保存 `/api/site/session` 返回的 `anonymousId`，后续请求通过 `x-anonymous-id` 或 body 传回后端。
+前端用户 API 使用 `anon_user_id` Cookie。首次调用 `/api/site/session` 时会生成当前用户唯一 UUID，并用同一个 UUID 写入 `app_users.id` 和 `app_users.anonymous_id`。登录后不会新建另一条用户记录，而是把 email、昵称、Supabase 登录信息合并到当前 UUID 用户上；如果已存在旧登录用户，会把旧用户的积分、报告、订阅、权益等关联数据合并到当前 UUID。前端必须复用同一个匿名身份：所有请求使用 `credentials: 'include'`；如果浏览器环境不能稳定发送 Cookie，就保存 `/api/site/session` 返回的 `anonymousId`，后续请求通过 `x-anonymous-id` 或 body 传回后端。
 
 ## 健康检查
 

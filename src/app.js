@@ -34,7 +34,7 @@ import {
 import { getAdminMetrics } from './metrics.js';
 import { createTryOnGeneration } from './generations.js';
 import { createFaceReport, getFaceReportForUser, ensureReportOwnedByUser, reportAccess } from './reports.js';
-import { clientLocationFromRequest, getOrCreateSiteSession } from './site.js';
+import { clientLocationFromRequest, getOrCreateSiteSession, serializeAnonymousCookie } from './site.js';
 import { getActiveSubscription } from './subscriptions.js';
 import { detectAllowanceForUser } from './usage.js';
 import { missing } from './config.js';
@@ -254,7 +254,10 @@ async function route(request) {
         lastSeenAt: user.last_seen_at
       },
       subscription: await getActiveSubscription(user.id)
-    });
+    }, user.anonymous_id ? {
+      'set-cookie': serializeAnonymousCookie(request, user.anonymous_id),
+      'x-anonymous-id': user.anonymous_id
+    } : {});
   }
 
   if (request.method === 'GET' && pathname === '/api/admin/session') {

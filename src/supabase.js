@@ -63,6 +63,14 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ''));
+}
+
+function primaryIdFromAnonymousId(anonymousId) {
+  return isUuid(anonymousId) ? { id: anonymousId } : {};
+}
+
 function rowOrFirst(rows) {
   return Array.isArray(rows) ? rows[0] || null : rows;
 }
@@ -113,7 +121,24 @@ export async function touchUser(id, patch = {}) {
   });
 }
 
-export async function upsertAnonymousUser({ anonymousId, metadata = {}, lastIp, lastCountry }) {
+export async function mergeAppUsers({ targetUserId, sourceUserId }) {
+  if (!targetUserId || !sourceUserId || targetUserId === sourceUserId) return null;
+
+  const rows = await rpc('merge_app_users', {
+    p_target_user_id: targetUserId,
+    p_source_user_id: sourceUserId
+  });
+
+  return rowOrFirst(rows);
+}
+
+export async function upsertAnonymousUser({
+  anonymousId,
+  metadata = {},
+  lastIp,
+  lastCountry,
+  useAnonymousIdAsPrimary = false
+}) {
   if (!anonymousId) {
     throw new AppError('anonymousId is required', 400);
   }
@@ -122,6 +147,7 @@ export async function upsertAnonymousUser({ anonymousId, metadata = {}, lastIp, 
     method: 'POST',
     prefer: 'resolution=merge-duplicates,return=representation',
     body: {
+      ...(useAnonymousIdAsPrimary ? primaryIdFromAnonymousId(anonymousId) : {}),
       anonymous_id: anonymousId,
       is_anonymous: true,
       metadata,

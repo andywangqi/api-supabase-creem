@@ -12,7 +12,9 @@ import {
   findUserByAnonymousId,
   findUserByEmail,
   firstRow,
+  mergeAppUsers,
   supabaseFetch,
+  upsertAnonymousUser,
   updateUserById
 } from './supabase.js';
 
@@ -79,6 +81,22 @@ async function createAuthUser(payload) {
   return firstRow(rows);
 }
 
+async function mergeUsersIntoTarget(targetUser, users) {
+  let target = targetUser;
+  const seen = new Set([target.id]);
+
+  for (const user of users) {
+    if (!user || seen.has(user.id)) continue;
+    target = await mergeAppUsers({
+      targetUserId: target.id,
+      sourceUserId: user.id
+    }) || target;
+    seen.add(user.id);
+  }
+
+  return target;
+}
+
 function profileFrom(input, claims) {
   const metadata = claims.user_metadata || {};
   return {
@@ -107,7 +125,7 @@ export async function saveSupabaseAuthUser(request, input = {}) {
   );
   const clientLocation = clientLocationFromRequest(request);
 
-  const patch = {
+  const buildPatch = (existingUser = {}) => ({
     ...clientLocation,
     auth_provider: 'supabase_google',
     auth_provider_user_id: profile.authProviderUserId,
@@ -116,21 +134,39 @@ export async function saveSupabaseAuthUser(request, input = {}) {
     ...(profile.avatarUrl ? { avatar_url: profile.avatarUrl } : {}),
     is_anonymous: false,
     metadata: {
+      ...(existingUser.metadata || {}),
       source: 'supabase_google'
     }
-  };
+  });
 
+  let currentUser = anonymousId ? await findUserByAnonymousId(anonymousId) : null;
   const authUser = await findUserByAuthProviderId(profile.authProviderUserId);
-  if (authUser) return updateUserById(authUser.id, patch);
-
   const emailUser = await findUserByEmail(profile.email);
-  if (emailUser) return updateUserById(emailUser.id, patch);
 
-  const anonymousUser = anonymousId ? await findUserByAnonymousId(anonymousId) : null;
-  if (anonymousUser) return updateUserById(anonymousUser.id, patch);
+  if (!currentUser && anonymousId) {
+    currentUser = await upsertAnonymousUser({
+      anonymousId,
+      lastIp: clientLocation.last_ip,
+      lastCountry: clientLocation.last_country,
+      useAnonymousIdAsPrimary: true,
+      metadata: { source: 'anonymous_session' }
+    });
+  }
+
+  if (currentUser) {
+    currentUser = await mergeUsersIntoTarget(currentUser, [authUser, emailUser]);
+    return updateUserById(currentUser.id, buildPatch(currentUser));
+  }
+
+  if (authUser) {
+    const target = await mergeUsersIntoTarget(authUser, [emailUser]);
+    return updateUserById(target.id, buildPatch(target));
+  }
+
+  if (emailUser) return updateUserById(emailUser.id, buildPatch(emailUser));
 
   return createAuthUser({
-    ...patch,
+    ...buildPatch(),
     anonymous_id: anonymousId || null
   });
 }
