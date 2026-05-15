@@ -4,7 +4,7 @@ import test from 'node:test';
 
 process.env.CREEM_WEBHOOK_SECRET ||= 'test_secret';
 
-const { slugify } = await import('../src/blog.js');
+const { slugify, toBlogPostingSchema } = await import('../src/blog.js');
 
 test('creates URL-safe blog slugs', () => {
   assert.equal(slugify(' My First Blog Post! '), 'my-first-blog-post');
@@ -38,4 +38,33 @@ test('admin user list displays ip and country', () => {
   assert.match(script, /user\.lastIp/);
   assert.match(script, /function countryLabel/);
   assert.match(styles, /\.userTable/);
+});
+
+test('maps blog posts to BlogPosting schema', () => {
+  assert.deepEqual(toBlogPostingSchema({
+    title: 'Face Shape Guide',
+    excerpt: 'Pick the right haircut.',
+    cover_image_url: '/images/face-guide.jpg',
+    author_name: 'Admin',
+    published_at: '2026-05-15T01:00:00.000Z',
+    updated_at: '2026-05-15T02:00:00.000Z',
+    created_at: '2026-05-14T23:00:00.000Z'
+  }), {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: 'Face Shape Guide',
+    description: 'Pick the right haircut.',
+    datePublished: '2026-05-15T01:00:00.000Z',
+    dateModified: '2026-05-15T02:00:00.000Z',
+    image: 'https://admin.faceshapedetector.store/images/face-guide.jpg',
+    author: {
+      '@type': 'Person',
+      name: 'Admin'
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'Face Shape Detector',
+      url: 'https://admin.faceshapedetector.store'
+    }
+  });
 });

@@ -312,6 +312,31 @@ Authorization: Bearer <supabase_access_token>
 
 读取公开单篇 Blog。
 
+Blog 返回对象包含 `schema`，可直接作为 JSON-LD 使用：
+
+```json
+{
+  "schema": {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": "First post",
+    "description": "Short summary",
+    "datePublished": "2026-05-15T01:00:00.000Z",
+    "dateModified": "2026-05-15T02:00:00.000Z",
+    "image": "https://example.com/cover.jpg",
+    "author": {
+      "@type": "Person",
+      "name": "Admin"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Face Shape Detector",
+      "url": "https://admin.faceshapedetector.store"
+    }
+  }
+}
+```
+
 ## 推荐调用顺序
 
 ### 网站打开

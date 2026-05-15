@@ -1,3 +1,4 @@
+import { config } from './config.js';
 import { AppError, firstRow, supabaseFetch } from './supabase.js';
 
 const VALID_STATUSES = new Set(['draft', 'published']);
@@ -70,6 +71,54 @@ function normalizeBlogInput(input = {}, isUpdate = false) {
   return payload;
 }
 
+function absoluteUrl(value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  if (/^https?:\/\//i.test(text)) return text;
+
+  const base = siteBaseUrl();
+  const path = text.startsWith('/') ? text : `/${text}`;
+  return `${base}${path}`;
+}
+
+function siteBaseUrl() {
+  return config.appBaseUrl.replace(/\/$/, '');
+}
+
+function compactObject(value) {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, item]) => item !== null && item !== undefined && item !== '')
+  );
+}
+
+export function toBlogPostingSchema(row) {
+  if (!row) return null;
+
+  const title = row.title || '';
+  const description = row.excerpt || title;
+  const image = absoluteUrl(row.cover_image_url);
+  const authorName = row.author_name || 'Face Shape Detector';
+
+  return compactObject({
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: title,
+    description,
+    datePublished: row.published_at || row.created_at,
+    dateModified: row.updated_at || row.published_at || row.created_at,
+    image: image || null,
+    author: {
+      '@type': 'Person',
+      name: authorName
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'Face Shape Detector',
+      url: siteBaseUrl()
+    }
+  });
+}
+
 function toPublicBlog(row) {
   if (!row) return null;
   return {
@@ -83,7 +132,8 @@ function toPublicBlog(row) {
     status: row.status,
     publishedAt: row.published_at,
     createdAt: row.created_at,
-    updatedAt: row.updated_at
+    updatedAt: row.updated_at,
+    schema: toBlogPostingSchema(row)
   };
 }
 

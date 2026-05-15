@@ -564,6 +564,8 @@ GET /api/blogs/:slug
 
 只返回 `published` 状态文章。
 
+Blog 返回对象包含 `schema` JSON-LD，类型为 `BlogPosting`，字段包含 `headline`、`description`、`datePublished`、`dateModified`、`image`、`author`、`publisher`。
+
 ## Creem 支付 API
 
 ### 创建 Checkout
